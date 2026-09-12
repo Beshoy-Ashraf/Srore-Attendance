@@ -2,11 +2,11 @@ using Infrastructure;
 using Application;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Infrastructure.Identity;
 using API.Middlewares;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 var builder = WebApplication.CreateBuilder(args);
 
