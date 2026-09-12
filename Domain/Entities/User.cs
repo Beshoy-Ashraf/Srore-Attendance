@@ -1,25 +1,29 @@
+using Domain.Enums;
+
 namespace Domain.Entities;
 
-public class User(string username, string email, string passwordHash, string displayName, string profilePictureUrl, string role)
+public class User(
+    string username,
+    string email,
+    string passwordHash,
+    string displayName,
+    string profilePictureUrl,
+    UserRole role)
 {
-      public Guid Id { get; private set; } = Guid.NewGuid();
-      public string Username { get; private set; } = username;
-      public string PasswordHash { get; private set; } = passwordHash;
-      public string Email { get; private set; } = email;
-      public string DisplayName { get; private set; } = displayName;
-      public string ProfilePictureUrl { get; private set; } = profilePictureUrl;
-      public string Role { get; private set; } = role;
-      public string PhoneMac { get; set; } = default!;
+      public Guid Id { get; set; }
+      public string Username { get; set; } = username;
+      public string PasswordHash { get; set; } = passwordHash;
+      public string Email { get; set; } = email;
+      public string DisplayName { get; set; } = displayName;
+      public string ProfilePictureUrl { get; set; } = profilePictureUrl;
+      public UserRole Role { get; set; } = role;
 
-      public List<RefreshToken> RefreshTokens
-      { get; private set; } = [];
-      public DateTime CreatedDate { get; set; }
-      public DateTime UpdateDate { get; set; }
-      public DateTime? DeleteDate { get; set; }
-      public bool IsDeleted => DeleteDate.HasValue;
-
-      // Navigation
       public Guid? StoreId { get; set; }
       public Store? Store { get; set; }
 
+      public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
+
+      public DateTime CreatedDate { get; set; }
+      public DateTime? UpdateDate { get; set; }
+      public DateTime? DeleteDate { get; set; }
 }

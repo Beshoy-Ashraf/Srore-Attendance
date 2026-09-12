@@ -7,6 +7,7 @@ using Domain.Exceptions;
 using Domain.Interfaces;
 using Application.Authentication.Dtos;
 using Application.Authentication.Commands.Register;
+using Domain.Enums;
 
 namespace Application.Auth.Commands.Register;
 
@@ -29,12 +30,13 @@ public class RegisterCommandHandler(
             var passwordHash = hasher.Hash(request.Password);
 
             var user = new User(
-                request.Username,
+                 request.Username,
                 request.Email,
                 passwordHash,
                 request.DisplayName,
                 request.ProfilePictureUrl,
-                role: "User");
+
+                request.Role);
 
             await context.UserRepository.AddAsync(user, cancellationToken);
 
@@ -53,6 +55,6 @@ public class RegisterCommandHandler(
                 accessToken,
                 refreshToken,
                 expiresAt,
-                new UserDto(user.Id, user.Username, user.Email, user.DisplayName, user.Role));
+                new UserDto(user.Id, user.Username, user.Email, user.ProfilePictureUrl, user.DisplayName, user.Role));
       }
 }

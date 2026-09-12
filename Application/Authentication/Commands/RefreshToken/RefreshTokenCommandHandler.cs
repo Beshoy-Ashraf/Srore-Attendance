@@ -48,7 +48,7 @@ public class RefreshTokenCommandHandler(IUnitOfWork context, ITokenService token
                 newAccessToken,
                 newRefreshTokenValue,
                 expiresAt,
-                new UserDto(user.Id, user.Username, user.Email, user.DisplayName, user.Role));
+                new UserDto(user.Id, user.Username, user.Email, user.ProfilePictureUrl, user.DisplayName, user.Role));
       }
 
       private ClaimsPrincipal GetPrincipalOrThrow(string accessToken)
