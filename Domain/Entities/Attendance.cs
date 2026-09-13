@@ -11,10 +11,9 @@ public class Attendance
       public DateTime? CheckInTime { get; set; }
       public DateTime? CheckOutTime { get; set; }
 
-      public decimal? CheckInLatitude { get; set; }
-      public decimal? CheckInLongitude { get; set; }
       public string? CheckInRouterMac { get; set; }
-      public string? CheckInDeviceId { get; set; }
+      public string? CheckInDeviceMac { get; set; }
+      public string? CheckInIp { get; set; }
 
       public VerificationMethod VerificationMethod { get; set; }
       public bool IsLate { get; set; }

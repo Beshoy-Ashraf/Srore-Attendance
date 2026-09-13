@@ -55,6 +55,6 @@ public class RegisterCommandHandler(
                 accessToken,
                 refreshToken,
                 expiresAt,
-                new UserDto(user.Id, user.Username, user.Email, user.ProfilePictureUrl, user.DisplayName, user.Role));
+                new UserDto(user.Id, user.Username, user.Email, user.ProfilePictureUrl, user.DisplayName, user.Role, user.StoreId));
       }
 }

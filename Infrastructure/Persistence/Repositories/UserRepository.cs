@@ -24,4 +24,20 @@ public class UserRepository(AppDbContext context) : BaseRepository<User>(context
                   .Include(u => u.RefreshTokens)
                   .FirstOrDefaultAsync(u => u.Id == id, cancellationToken);
       }
+      public async Task<List<User>?> GetFilteredAsync(Guid? StoreId, Domain.Enums.UserRole? Role, int Page, int PageSize, CancellationToken cancellationToken)
+      {
+            var query = _context.Users.AsQueryable();
+
+            if (StoreId.HasValue)
+            {
+                  query = query.Where(u => u.StoreId == StoreId.Value);
+            }
+
+            if (Role.HasValue)
+            {
+                  query = query.Where(u => u.Role == Role.Value);
+            }
+
+            return await query.Skip((Page - 1) * PageSize).Take(PageSize).ToListAsync(cancellationToken);
+      }
 }

@@ -11,8 +11,8 @@ public class DeviceConfiguration : IEntityTypeConfiguration<Device>
             builder.ToTable("Devices");
             builder.HasKey(d => d.Id);
 
-            builder.Property(d => d.RegisteredRouterMac).IsRequired().HasMaxLength(17);
-            builder.Property(d => d.RegisteredDeviceId).IsRequired().HasMaxLength(200);
+            builder.Property(d => d.RegisteredDeviceMac).IsRequired().HasMaxLength(17);
+            builder.Property(d => d.RegisteredDeviceIp).HasMaxLength(45); // IPv6-safe length
 
             builder.HasOne(d => d.Staff)
                 .WithOne()

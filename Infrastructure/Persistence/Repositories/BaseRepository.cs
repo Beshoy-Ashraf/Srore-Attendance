@@ -60,7 +60,7 @@ public class BaseRepository<T>(AppDbContext appDbContext) : IBaseRepository<T> w
             return await _dbContext.Set<T>().FindAsync(id, cancellationToken) ?? throw new KeyNotFoundException("No matching entity found in the database");
       }
 
-      public Task<T> UpdateAsync(T entity)
+      public Task<T> UpdateAsync(T entity, CancellationToken cancellationToken)
       {
             var entry = _dbContext.Set<T>().Update(entity);
             return Task.FromResult(entry.Entity);
