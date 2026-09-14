@@ -1,13 +1,14 @@
 using FluentValidation;
 
-namespace Application.Stores.Commands.CreateStore;
+namespace Application.Stores.Commands.UpdateStore;
 
-public class CreateStoreCommandValidator : AbstractValidator<CreateStoreCommand>
+public class UpdateStoreCommandValidator : AbstractValidator<UpdateStoreCommand>
 {
       private const string MacPattern = "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$";
 
-      public CreateStoreCommandValidator()
+      public UpdateStoreCommandValidator()
       {
+            RuleFor(x => x.Id).NotEmpty();
             RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
 
             RuleFor(x => x.RouterMacs)
