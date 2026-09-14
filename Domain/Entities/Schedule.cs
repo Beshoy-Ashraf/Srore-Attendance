@@ -20,6 +20,7 @@ public class Schedule
 
       public DateTime CreatedDate { get; set; }
       public DateTime? UpdateDate { get; set; }
+      public DateTime? DeletedDate { get; set; }
 
       // Navigation
       public User Staff { get; set; } = default!;
