@@ -17,19 +17,14 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class RequestsController : ControllerBase
+public class RequestsController(ISender mediator) : ControllerBase
 {
-      private readonly ISender _mediator;
-
-      public RequestsController(ISender mediator)
-      {
-            _mediator = mediator;
-      }
+      private readonly ISender _mediator = mediator;
 
       // RequestedById / ApprovedByAreaManagerId always come from the token, never the body.
       private Guid CurrentUserId =>
-          Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-              ?? throw new UnauthorizedAccessException("No user id claim found on the current request."));
+            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("No user id claim found on the current request."));
 
       /// <summary>Staff (or their Store Manager, on their behalf) submits an exception, replacement,
       /// sick leave, annual, or official-holiday request. Starts as Pending.</summary>
