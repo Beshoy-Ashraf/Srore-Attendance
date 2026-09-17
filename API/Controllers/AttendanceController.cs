@@ -15,17 +15,13 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class AttendanceController : ControllerBase
+public class AttendanceController(ISender mediator) : ControllerBase
 {
-      private readonly ISender _mediator;
+      private readonly ISender _mediator = mediator;
 
-      public AttendanceController(ISender mediator)
-      {
-            _mediator = mediator;
-      }
       private Guid CurrentUserId =>
-          Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-              ?? throw new UnauthorizedAccessException("No user id claim found on the current request."));
+            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? throw new UnauthorizedAccessException("No user id claim found on the current request."));
 
       [HttpPost("check-in")]
       public async Task<ActionResult<CheckInResponseDto>> CheckIn(CheckInRequest request, CancellationToken cancellationToken)

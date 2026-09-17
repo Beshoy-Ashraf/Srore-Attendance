@@ -13,14 +13,9 @@ namespace API.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class StoresController : ControllerBase
+public class StoresController(ISender mediator) : ControllerBase
 {
-      private readonly ISender _mediator;
-
-      public StoresController(ISender mediator)
-      {
-            _mediator = mediator;
-      }
+      private readonly ISender _mediator = mediator;
 
       [HttpGet("{id:guid}")]
       public async Task<ActionResult<StoreDto>> GetById(Guid id, CancellationToken cancellationToken)
