@@ -17,6 +17,8 @@ public class UnitOfWork : IUnitOfWork
       public IRequestRepository RequestRepository { get; private set; } = null!;
       public IMissionRepository MissionRepository { get; private set; } = null!;
       public IDeviceRepository DeviceRepository { get; private set; } = null!;
+      public IAttendanceSettingsRepository AttendanceSettingsRepository { get; private set; } = null!;
+
 
       public UnitOfWork(AppDbContext dBContext)
       {
@@ -29,6 +31,7 @@ public class UnitOfWork : IUnitOfWork
             RequestRepository = new RequestRepository(_dbContext);
             MissionRepository = new MissionRepository(_dbContext);
             DeviceRepository = new DeviceRepository(_dbContext);
+            AttendanceSettingsRepository = new AttendanceSettingsRepository(_dbContext);
 
       }
       public async Task<int> Complete(CancellationToken cancellationToken)
