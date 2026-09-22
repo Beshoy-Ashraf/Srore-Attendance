@@ -6,9 +6,14 @@ using MediatR;
 
 namespace Application.Requests.Commands.ApproveRequest;
 
-public class ApproveRequestCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<ApproveRequestCommand>
+public class ApproveRequestCommandHandler : IRequestHandler<ApproveRequestCommand>
 {
-      private readonly IUnitOfWork _unitOfWork = unitOfWork;
+      private readonly IUnitOfWork _unitOfWork;
+
+      public ApproveRequestCommandHandler(IUnitOfWork unitOfWork)
+      {
+            _unitOfWork = unitOfWork;
+      }
 
       public async Task Handle(ApproveRequestCommand request, CancellationToken cancellationToken)
       {
@@ -25,13 +30,13 @@ public class ApproveRequestCommandHandler(IUnitOfWork unitOfWork) : IRequestHand
 
             await _unitOfWork.RequestRepository.UpdateAsync(entity, cancellationToken);
 
-            // Annual/sick leave and official holidays map onto a day-off shift type directly.
-            // Exceptions and replacements are handled manually by managers and don't auto-edit the schedule.
+            // Annual/sick leave map onto their matching shift type. Official holidays are a
+            // company-wide non-working day (OFF), not personal annual leave.
             var shiftType = entity.Type switch
             {
                   RequestType.Annual => ShiftType.ANN,
                   RequestType.SickLeave => ShiftType.SL,
-                  RequestType.OfficialHoliday => ShiftType.ANN,
+                  RequestType.OfficialHoliday => ShiftType.OFF,
                   _ => (ShiftType?)null
             };
 

@@ -36,7 +36,6 @@ public class CheckInCommandHandler : IRequestHandler<CheckInCommand, CheckInResp
                         Id = Guid.NewGuid(),
                         StaffId = request.StaffId,
                         RegisteredDeviceMac = request.DeviceMac,
-                        RegisteredDeviceIp = request.DeviceIp,
                         RegisteredDate = DateTime.UtcNow,
                         IsActive = true
                   };
@@ -52,11 +51,7 @@ public class CheckInCommandHandler : IRequestHandler<CheckInCommand, CheckInResp
                             "This PC isn't the one registered to your account. Ask your Store Manager to reset your registered device.");
                   }
 
-                  if (device.RegisteredDeviceIp != request.DeviceIp)
-                  {
-                        device.RegisteredDeviceIp = request.DeviceIp;
-                        await _unitOfWork.DeviceRepository.UpdateAsync(device, cancellationToken);
-                  }
+
             }
 
             var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -73,7 +68,6 @@ public class CheckInCommandHandler : IRequestHandler<CheckInCommand, CheckInResp
                   CheckInTime = checkInTime,
                   CheckInRouterMac = request.RouterMac,
                   CheckInDeviceMac = request.DeviceMac,
-                  CheckInIp = request.DeviceIp,
                   VerificationMethod = VerificationMethod.Network,
                   IsLate = isLate,
                   IsDeviceMismatch = false,

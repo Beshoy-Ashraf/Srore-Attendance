@@ -15,5 +15,6 @@ public class StoreRouterConfiguration : IEntityTypeConfiguration<StoreRouter>
             builder.Property(r => r.Label).HasMaxLength(100);
 
             builder.HasIndex(r => r.MacAddress).IsUnique();
+            builder.HasQueryFilter(r => r.Store == null || r.Store.DeleteDate == null);
       }
 }

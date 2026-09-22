@@ -6,7 +6,7 @@ namespace Application.Attendance.Queries.GetAttendances;
 public record GetAttendancesQuery(
     Guid? StaffId,
     Guid? StoreId,
-    DateOnly? From,
-    DateOnly? To,
+    DateTime? From,
+    DateTime? To,
     int Page = 1,
     int PageSize = 20) : IRequest<IEnumerable<AttendanceDto>>;

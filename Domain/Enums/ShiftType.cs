@@ -7,5 +7,6 @@ public enum ShiftType
       ANN,  // annual leave
       BW,   // comes between - custom/split hours
       FULL, // AM + PM, works all day
-      SL    // seek leave
+      SL,    // seek leave
+      OFF
 }

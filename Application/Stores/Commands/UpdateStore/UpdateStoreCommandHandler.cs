@@ -14,7 +14,6 @@ public class UpdateStoreCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler
             var store = await _unitOfWork.StoreRepository.GetByIdWithRoutersAsync(request.Id)
                 ?? throw new NotFoundException(nameof(Store), request.Id);
 
-            // Make sure none of the new MACs belong to a different store
             foreach (var mac in request.RouterMacs)
             {
                   var existingStore = await _unitOfWork.StoreRepository.GetByRouterMacAsync(mac);
@@ -22,29 +21,51 @@ public class UpdateStoreCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler
                         throw new ConflictException($"Router MAC '{mac}' is already registered to another store.");
             }
 
+            if (request.AreaManagerId is not null)
+            {
+                  var areaManager = await _unitOfWork.UserRepository.GetUserByUserId(request.AreaManagerId.Value, cancellationToken)
+                      ?? throw new NotFoundException(nameof(User), request.AreaManagerId.Value);
+
+                  if (areaManager.DeleteDate is not null)
+                        throw new NotFoundException(nameof(User), request.AreaManagerId.Value);
+            }
+
             store.Name = request.Name;
             store.AreaManagerId = request.AreaManagerId;
             store.UpdateDate = DateTime.UtcNow;
 
-            // Reconcile the router MAC collection: drop ones no longer present, add new ones
-            var existingMacs = store.RouterMacs.Select(r => r.MacAddress).ToList();
+            static string NormalizeMac(string mac) => mac.Trim().Replace("-", ":").ToUpperInvariant();
 
-            store.RouterMacs = store.RouterMacs
-                .Where(r => request.RouterMacs.Contains(r.MacAddress))
+            var requestedMacs = request.RouterMacs
+                .Where(mac => !string.IsNullOrWhiteSpace(mac))
+                .Select(NormalizeMac)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            foreach (var mac in request.RouterMacs.Except(existingMacs))
+            var routersToRemove = store.RouterMacs
+                .Where(router => !requestedMacs.Contains(NormalizeMac(router.MacAddress)))
+                .ToList();
+
+            foreach (var router in routersToRemove)
             {
+                  store.RouterMacs.Remove(router);
+            }
+
+            foreach (var mac in requestedMacs)
+            {
+                  if (store.RouterMacs.Any(router => NormalizeMac(router.MacAddress) == mac))
+                        continue;
+
                   store.RouterMacs.Add(new StoreRouter
                   {
                         Id = Guid.NewGuid(),
                         StoreId = store.Id,
+                        Store = store,
                         MacAddress = mac,
                         CreatedDate = DateTime.UtcNow
                   });
             }
 
-            await _unitOfWork.StoreRepository.UpdateAsync(store, cancellationToken);
             await _unitOfWork.Complete(cancellationToken);
       }
 }

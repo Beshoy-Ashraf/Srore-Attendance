@@ -1,0 +1,2569 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <title>Rota: store attendance</title>
+      <link rel="icon"
+            href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%95%92%3C/text%3E%3C/svg%3E">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:wght@400;500;600&display=swap"
+            rel="stylesheet">
+      <style>
+            :root {
+                  --bg: #E9ECE6;
+                  --surface: #F7F8F4;
+                  --raise: #FFFFFF;
+                  --ink: #16252A;
+                  --ink-2: #4A5B60;
+                  --line: #CBD3CB;
+                  --line-2: #E1E6DF;
+                  --side: #14211F;
+                  --side-ink: #DCE6E2;
+                  --side-mute: #8FA39D;
+                  --signal: #F2C230;
+                  --signal-ink: #1A1500;
+                  --primary: #16252A;
+                  --primary-ink: #F7F8F4;
+                  --ok: #1F7A4D;
+                  --ok-bg: #D8EFE0;
+                  --warn: #7A5000;
+                  --warn-bg: #F7E9BE;
+                  --bad: #B0352A;
+                  --bad-bg: #F6DAD5;
+                  --s-am: #D9971A;
+                  --s-pm: #3B4BA6;
+                  --s-full: #17806D;
+                  --s-bw: #8E4E85;
+                  --s-ann: #4A8FC0;
+                  --s-sl: #C4553B;
+                  --s-off: #6B7280;
+                  --focus: #2F6BFF;
+                  --shadow: #16252A;
+                  color-scheme: light;
+            }
+
+            @media (prefers-color-scheme: dark) {
+                  :root:not([data-theme="light"]) {
+                        --bg: #0E1517;
+                        --surface: #152023;
+                        --raise: #1B292D;
+                        --ink: #E4ECE9;
+                        --ink-2: #9DB0AB;
+                        --line: #2E4044;
+                        --line-2: #22322F;
+                        --side: #0A100F;
+                        --side-ink: #DCE6E2;
+                        --side-mute: #8FA39D;
+                        --primary: #E4ECE9;
+                        --primary-ink: #0E1517;
+                        --ok: #6FD39A;
+                        --ok-bg: #163526;
+                        --warn: #F0C567;
+                        --warn-bg: #3A2E0E;
+                        --bad: #F09088;
+                        --bad-bg: #40201C;
+                        --s-am: #E8B84A;
+                        --s-pm: #7C8CE6;
+                        --s-full: #3FB7A0;
+                        --s-bw: #C283B8;
+                        --s-ann: #78B4E0;
+                        --s-sl: #E58A72;
+                        --s-off: #9CA3AF;
+                        --focus: #7AA2FF;
+                        --shadow: #000;
+                        color-scheme: dark;
+                  }
+            }
+
+            :root[data-theme="dark"] {
+                  --bg: #0E1517;
+                  --surface: #152023;
+                  --raise: #1B292D;
+                  --ink: #E4ECE9;
+                  --ink-2: #9DB0AB;
+                  --line: #2E4044;
+                  --line-2: #22322F;
+                  --side: #0A100F;
+                  --side-ink: #DCE6E2;
+                  --side-mute: #8FA39D;
+                  --primary: #E4ECE9;
+                  --primary-ink: #0E1517;
+                  --ok: #6FD39A;
+                  --ok-bg: #163526;
+                  --warn: #F0C567;
+                  --warn-bg: #3A2E0E;
+                  --bad: #F09088;
+                  --bad-bg: #40201C;
+                  --s-am: #E8B84A;
+                  --s-pm: #7C8CE6;
+                  --s-full: #3FB7A0;
+                  --s-bw: #C283B8;
+                  --s-ann: #78B4E0;
+                  --s-sl: #E58A72;
+                  --s-off: #9CA3AF;
+                  --focus: #7AA2FF;
+                  --shadow: #000;
+                  color-scheme: dark;
+            }
+
+            * {
+                  box-sizing: border-box
+            }
+
+            html {
+                  -webkit-text-size-adjust: 100%
+            }
+
+            body {
+                  margin: 0;
+                  background: var(--bg);
+                  color: var(--ink);
+                  font: 15px/1.5 "Public Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+                  font-variant-numeric: tabular-nums
+            }
+
+            h1,
+            h2,
+            h3 {
+                  font-family: "Bricolage Grotesque", "Public Sans", system-ui, sans-serif;
+                  line-height: 1.15;
+                  margin: 0;
+                  letter-spacing: -.01em
+            }
+
+            h1 {
+                  font-size: clamp(1.6rem, 3vw, 2.25rem);
+                  font-weight: 700
+            }
+
+            h2 {
+                  font-size: 1.2rem;
+                  font-weight: 700
+            }
+
+            h3 {
+                  font-size: 1rem;
+                  font-weight: 700
+            }
+
+            p {
+                  margin: 0
+            }
+
+            .muted {
+                  color: var(--ink-2)
+            }
+
+            .pad {
+                  padding: 18px
+            }
+
+            button,
+            input,
+            select,
+            textarea {
+                  font: inherit;
+                  color: inherit
+            }
+
+            :focus-visible {
+                  outline: 3px solid var(--focus);
+                  outline-offset: 2px
+            }
+
+            @media (prefers-reduced-motion:reduce) {
+                  * {
+                        transition: none !important;
+                        animation: none !important
+                  }
+            }
+
+            /* shell */
+            .app {
+                  display: grid;
+                  grid-template-columns: 248px minmax(0, 1fr);
+                  min-height: 100vh
+            }
+
+            .side {
+                  background: var(--side);
+                  color: var(--side-ink);
+                  padding: 20px 14px;
+                  position: sticky;
+                  top: 0;
+                  height: 100vh;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                  overflow: auto
+            }
+
+            .side-top {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between
+            }
+
+            .brand {
+                  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+                  font-weight: 800;
+                  font-size: 1.55rem;
+                  padding: 0 8px;
+                  display: flex;
+                  align-items: center;
+                  gap: 10px;
+                  letter-spacing: -.02em
+            }
+
+            .brand i {
+                  width: 14px;
+                  height: 14px;
+                  background: var(--signal);
+                  border-radius: 50%;
+                  display: inline-block
+            }
+
+            .collapse {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 16px;
+                  flex: 1;
+                  min-height: 0
+            }
+
+            .menu-btn {
+                  display: none;
+                  background: transparent;
+                  border: 1.5px solid #ffffff33;
+                  color: var(--side-ink);
+                  border-radius: 8px;
+                  padding: 6px 12px;
+                  cursor: pointer;
+                  font-weight: 600
+            }
+
+            .who {
+                  padding: 12px 8px;
+                  border-top: 1px solid #ffffff1f;
+                  border-bottom: 1px solid #ffffff1f
+            }
+
+            .who b {
+                  display: block;
+                  font-weight: 600
+            }
+
+            .who span {
+                  color: var(--side-mute);
+                  font-size: .86rem
+            }
+
+            .nav {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 2px
+            }
+
+            .nav a {
+                  display: block;
+                  padding: 9px 12px;
+                  border-radius: 6px;
+                  color: var(--side-ink);
+                  text-decoration: none;
+                  border-left: 4px solid transparent;
+                  cursor: pointer
+            }
+
+            .nav a:hover {
+                  background: #ffffff0d
+            }
+
+            .nav a[aria-current="page"] {
+                  background: #ffffff14;
+                  border-left-color: var(--signal);
+                  font-weight: 600
+            }
+
+            .nav hr {
+                  border: 0;
+                  border-top: 1px solid #ffffff1f;
+                  margin: 8px 8px
+            }
+
+            .foot {
+                  margin-top: auto;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px
+            }
+
+            .foot select {
+                  background: #ffffff10;
+                  border-color: #ffffff26;
+                  color: var(--side-ink)
+            }
+
+            .foot select option {
+                  color: #16252A
+            }
+
+            .foot .btn {
+                  background: transparent;
+                  border-color: #ffffff33;
+                  color: var(--side-ink)
+            }
+
+            .foot .btn:hover {
+                  border-color: var(--side-ink)
+            }
+
+            .foot small {
+                  color: var(--side-mute)
+            }
+
+            .main {
+                  padding: 28px clamp(16px, 4vw, 44px) 64px;
+                  max-width: 1240px;
+                  width: 100%
+            }
+
+            .page-head {
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: flex-end;
+                  justify-content: space-between;
+                  gap: 12px;
+                  margin-bottom: 22px
+            }
+
+            .page-head p {
+                  margin-top: 4px
+            }
+
+            .row {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 10px;
+                  align-items: center
+            }
+
+            .stack {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 14px
+            }
+
+            .boot {
+                  padding: 40px;
+                  text-align: center;
+                  color: var(--ink-2)
+            }
+
+            @media (max-width:860px) {
+                  .app {
+                        grid-template-columns: 1fr
+                  }
+
+                  .side {
+                        position: static;
+                        height: auto;
+                        padding: 12px 14px
+                  }
+
+                  .menu-btn {
+                        display: inline-flex
+                  }
+
+                  .collapse {
+                        display: none;
+                        margin-top: 8px
+                  }
+
+                  .side.open .collapse {
+                        display: flex
+                  }
+            }
+
+            /* controls */
+            .btn {
+                  display: inline-flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 6px;
+                  border: 1.5px solid var(--line);
+                  background: var(--raise);
+                  color: var(--ink);
+                  padding: 8px 14px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  cursor: pointer;
+                  min-height: 38px;
+                  text-decoration: none
+            }
+
+            .btn:hover {
+                  border-color: var(--ink-2)
+            }
+
+            .btn.primary {
+                  background: var(--primary);
+                  color: var(--primary-ink);
+                  border-color: var(--primary)
+            }
+
+            .btn.danger {
+                  color: var(--bad);
+                  border-color: var(--bad)
+            }
+
+            .btn.ghost {
+                  border-color: transparent;
+                  background: transparent
+            }
+
+            .btn.sm {
+                  padding: 3px 10px;
+                  min-height: 30px;
+                  font-size: .85rem
+            }
+
+            .btn:disabled {
+                  opacity: .5;
+                  cursor: not-allowed
+            }
+
+            input:not([type="checkbox"]),
+            select,
+            textarea {
+                  width: 100%;
+                  padding: 8px 10px;
+                  border: 1.5px solid var(--line);
+                  border-radius: 8px;
+                  background: var(--raise);
+                  min-height: 38px
+            }
+
+            textarea {
+                  resize: vertical;
+                  min-height: 84px
+            }
+
+            input:disabled,
+            select:disabled,
+            textarea:disabled {
+                  opacity: .6
+            }
+
+            .field {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 5px;
+                  font-weight: 600;
+                  font-size: .88rem;
+                  min-width: 0
+            }
+
+            .field .hint {
+                  font-weight: 400;
+                  color: var(--ink-2);
+                  font-size: .82rem
+            }
+
+            .grid2 {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+                  gap: 14px
+            }
+
+            .filters {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 12px;
+                  align-items: flex-end;
+                  margin-bottom: 16px
+            }
+
+            .filters .field {
+                  min-width: 150px
+            }
+
+            /* tables */
+            .scroll {
+                  overflow-x: auto;
+                  border: 1px solid var(--line);
+                  border-radius: 10px;
+                  background: var(--raise)
+            }
+
+            .tbl {
+                  width: 100%;
+                  border-collapse: collapse;
+                  min-width: 640px
+            }
+
+            .tbl th {
+                  text-align: left;
+                  font-size: .82rem;
+                  color: var(--ink-2);
+                  font-weight: 600;
+                  padding: 10px 12px;
+                  border-bottom: 1px solid var(--line);
+                  background: var(--surface);
+                  white-space: nowrap
+            }
+
+            .tbl td {
+                  padding: 10px 12px;
+                  border-bottom: 1px solid var(--line-2);
+                  vertical-align: middle
+            }
+
+            .tbl tr:last-child td {
+                  border-bottom: 0
+            }
+
+            .tbl .r {
+                  text-align: right;
+                  white-space: nowrap
+            }
+
+            .pager {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 10px;
+                  padding: 10px 2px;
+                  color: var(--ink-2);
+                  font-size: .9rem
+            }
+
+            .empty {
+                  padding: 34px 18px;
+                  text-align: center;
+                  color: var(--ink-2)
+            }
+
+            .empty b {
+                  display: block;
+                  color: var(--ink);
+                  margin-bottom: 4px
+            }
+
+            .person {
+                  display: flex;
+                  align-items: center;
+                  gap: 10px
+            }
+
+            .avatar {
+                  width: 30px;
+                  height: 30px;
+                  border-radius: 50%;
+                  background: var(--line-2);
+                  color: var(--ink);
+                  display: inline-grid;
+                  place-items: center;
+                  font-size: .72rem;
+                  font-weight: 700;
+                  flex: none;
+                  overflow: hidden
+            }
+
+            .avatar img {
+                  width: 100%;
+                  height: 100%;
+                  object-fit: cover;
+                  display: block
+            }
+
+            .avatar svg {
+                  width: 18px;
+                  height: 18px;
+                  display: block;
+                  color: var(--ink)
+            }
+
+            .tabs {
+                  display: flex;
+                  gap: 4px;
+                  border-bottom: 1px solid var(--line);
+                  margin-bottom: 16px;
+                  overflow-x: auto
+            }
+
+            .tab {
+                  background: none;
+                  border: 0;
+                  border-bottom: 3px solid transparent;
+                  padding: 10px 14px;
+                  font-weight: 600;
+                  color: var(--ink-2);
+                  cursor: pointer;
+                  white-space: nowrap
+            }
+
+            .tab[aria-selected="true"] {
+                  color: var(--ink);
+                  border-bottom-color: var(--signal)
+            }
+
+            .tab .count {
+                  margin-left: 6px;
+                  background: var(--line-2);
+                  border-radius: 999px;
+                  padding: 1px 8px;
+                  font-size: .78rem
+            }
+
+            /* badges */
+            .badge {
+                  display: inline-block;
+                  padding: 2px 9px;
+                  border-radius: 5px;
+                  font-size: .8rem;
+                  font-weight: 600;
+                  border: 1.5px solid transparent;
+                  white-space: nowrap
+            }
+
+            .badge.pending {
+                  background: var(--warn-bg);
+                  color: var(--warn);
+                  border: 1.5px dashed var(--warn)
+            }
+
+            .badge.approved {
+                  background: var(--ok-bg);
+                  color: var(--ok)
+            }
+
+            .badge.rejected {
+                  background: var(--bad-bg);
+                  color: var(--bad)
+            }
+
+            .badge.late {
+                  background: var(--bad-bg);
+                  color: var(--bad)
+            }
+
+            .badge.ontime {
+                  background: var(--ok-bg);
+                  color: var(--ok)
+            }
+
+            .badge.plain {
+                  background: var(--line-2);
+                  color: var(--ink)
+            }
+
+            .chips {
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px
+            }
+
+            .chip {
+                  display: inline-flex;
+                  align-items: center;
+                  gap: 6px;
+                  background: var(--line-2);
+                  border-radius: 5px;
+                  padding: 2px 8px;
+                  font-size: .82rem;
+                  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace
+            }
+
+            .chip button {
+                  background: none;
+                  border: 0;
+                  cursor: pointer;
+                  color: var(--ink-2);
+                  padding: 0 2px;
+                  font-size: 1rem;
+                  line-height: 1
+            }
+
+            /* shift tickets: the rota's visual language */
+            .ticket {
+                  --c: var(--s-am);
+                  display: flex;
+                  flex-direction: column;
+                  gap: 1px;
+                  width: 100%;
+                  text-align: left;
+                  background: var(--raise);
+                  border: 1.5px solid var(--line);
+                  border-left: 6px solid var(--c);
+                  border-radius: 5px;
+                  padding: 5px 8px;
+                  font-size: .84rem;
+                  cursor: default
+            }
+
+            button.ticket {
+                  cursor: pointer
+            }
+
+            button.ticket:hover {
+                  border-color: var(--ink-2);
+                  border-left-color: var(--c)
+            }
+
+            .ticket .t-name {
+                  font-weight: 700
+            }
+
+            .ticket .t-time {
+                  color: var(--ink-2)
+            }
+
+            .ticket .t-who {
+                  color: var(--ink-2);
+                  font-size: .8rem
+            }
+
+            .ticket .t-status {
+                  font-size: .76rem;
+                  font-weight: 600;
+                  color: var(--warn)
+            }
+
+            .ticket.pending {
+                  border-style: dashed;
+                  border-left-style: solid;
+                  background: var(--surface)
+            }
+
+            .ticket.rejected {
+                  opacity: .65
+            }
+
+            .ticket.rejected .t-name {
+                  text-decoration: line-through
+            }
+
+            .ticket.rejected .t-status {
+                  color: var(--bad)
+            }
+
+            .legend {
+                  list-style: none;
+                  margin: 0;
+                  padding: 0;
+                  display: flex;
+                  flex-wrap: wrap;
+                  gap: 6px 16px;
+                  font-size: .84rem;
+                  color: var(--ink-2)
+            }
+
+            .legend li {
+                  display: flex;
+                  align-items: center;
+                  gap: 6px
+            }
+
+            .legend i {
+                  width: 12px;
+                  height: 12px;
+                  border-radius: 3px;
+                  display: inline-block
+            }
+
+            .legend .dashed {
+                  border: 1.5px dashed var(--warn);
+                  background: transparent
+            }
+
+            .week {
+                  display: grid;
+                  grid-template-columns: repeat(7, minmax(0, 1fr));
+                  gap: 1px;
+                  background: var(--line);
+                  border: 1px solid var(--line);
+                  border-radius: 10px;
+                  overflow: hidden
+            }
+
+            .day {
+                  background: var(--surface);
+                  min-height: 120px;
+                  padding: 8px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px
+            }
+
+            .day.today {
+                  background: var(--raise);
+                  box-shadow: inset 0 3px 0 var(--signal)
+            }
+
+            .day h3 {
+                  font-size: .86rem;
+                  color: var(--ink-2);
+                  font-family: "Public Sans", system-ui, sans-serif;
+                  font-weight: 600
+            }
+
+            .day.today h3 {
+                  color: var(--ink)
+            }
+
+            @media (max-width:860px) {
+                  .week {
+                        grid-template-columns: 1fr
+                  }
+
+                  .day {
+                        min-height: 0
+                  }
+            }
+
+            .rota {
+                  border-collapse: separate;
+                  border-spacing: 0;
+                  min-width: 900px;
+                  width: 100%
+            }
+
+            .rota th,
+            .rota td {
+                  border-bottom: 1px solid var(--line-2);
+                  border-right: 1px solid var(--line-2);
+                  padding: 6px;
+                  vertical-align: top;
+                  background: var(--raise)
+            }
+
+            .rota th {
+                  background: var(--surface);
+                  font-size: .82rem;
+                  text-align: left;
+                  color: var(--ink-2);
+                  font-weight: 600
+            }
+
+            .rota th.today {
+                  box-shadow: inset 0 3px 0 var(--signal);
+                  color: var(--ink)
+            }
+
+            .rota .who-col {
+                  position: sticky;
+                  left: 0;
+                  z-index: 1;
+                  min-width: 160px;
+                  background: var(--surface)
+            }
+
+            .rota td.cell {
+                  min-width: 128px
+            }
+
+            .cell-stack {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 5px
+            }
+
+            .add {
+                  background: none;
+                  border: 1.5px dashed var(--line);
+                  border-radius: 5px;
+                  color: var(--ink-2);
+                  cursor: pointer;
+                  padding: 3px;
+                  font-size: .82rem;
+                  width: 100%
+            }
+
+            .add:hover {
+                  border-color: var(--ink-2);
+                  color: var(--ink)
+            }
+
+            /* check-in */
+            .punch-layout {
+                  display: grid;
+                  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+                  gap: 32px;
+                  align-items: start
+            }
+
+            @media (max-width:860px) {
+                  .punch-layout {
+                        grid-template-columns: 1fr
+                  }
+            }
+
+            .punch-main {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 14px;
+                  align-items: flex-start
+            }
+
+            .clock {
+                  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+                  font-weight: 800;
+                  font-size: clamp(3.6rem, 11vw, 7.5rem);
+                  letter-spacing: -.04em;
+                  line-height: .95;
+                  font-variant-numeric: tabular-nums
+            }
+
+            .clock .secs {
+                  font-size: .32em;
+                  letter-spacing: 0;
+                  margin-left: .15em;
+                  color: var(--ink-2);
+                  font-weight: 600
+            }
+
+            .punch {
+                  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+                  font-weight: 700;
+                  font-size: 1.35rem;
+                  padding: 16px 38px;
+                  border: 2.5px solid var(--ink);
+                  background: var(--signal);
+                  color: var(--signal-ink);
+                  border-radius: 12px;
+                  cursor: pointer;
+                  box-shadow: 5px 5px 0 var(--shadow);
+                  transition: transform .08s, box-shadow .08s
+            }
+
+            .punch:hover:not(:disabled) {
+                  transform: translate(-1px, -1px);
+                  box-shadow: 6px 6px 0 var(--shadow)
+            }
+
+            .punch:active:not(:disabled) {
+                  transform: translate(4px, 4px);
+                  box-shadow: 1px 1px 0 var(--shadow)
+            }
+
+            .punch:disabled {
+                  background: var(--line-2);
+                  color: var(--ink-2);
+                  box-shadow: none;
+                  border-color: var(--line);
+                  cursor: not-allowed
+            }
+
+            .panel {
+                  border: 1px solid var(--line);
+                  border-radius: 10px;
+                  background: var(--raise);
+                  padding: 16px
+            }
+
+            .panel h3 {
+                  margin-bottom: 10px
+            }
+
+            .kv {
+                  display: grid;
+                  grid-template-columns: auto 1fr;
+                  gap: 6px 16px;
+                  font-size: .92rem
+            }
+
+            .kv dt {
+                  color: var(--ink-2)
+            }
+
+            .kv dd {
+                  margin: 0;
+                  font-weight: 600
+            }
+
+            .alert {
+                  padding: 10px 14px;
+                  border-radius: 8px;
+                  font-size: .92rem;
+                  border: 1.5px solid
+            }
+
+            .alert.bad {
+                  background: var(--bad-bg);
+                  color: var(--bad);
+                  border-color: var(--bad)
+            }
+
+            .alert.warn {
+                  background: var(--warn-bg);
+                  color: var(--warn);
+                  border-color: var(--warn)
+            }
+
+            .alert.ok {
+                  background: var(--ok-bg);
+                  color: var(--ok);
+                  border-color: var(--ok)
+            }
+
+            /* approvals */
+            .approval {
+                  display: grid;
+                  grid-template-columns: minmax(0, 1fr) auto;
+                  gap: 12px;
+                  align-items: center;
+                  padding: 14px 16px;
+                  border-bottom: 1px solid var(--line-2)
+            }
+
+            .approval:last-child {
+                  border-bottom: 0
+            }
+
+            .approval .what {
+                  display: flex;
+                  flex-direction: column;
+                  gap: 6px;
+                  min-width: 0
+            }
+
+            .approval .what .row {
+                  gap: 8px
+            }
+
+            .approval .ticket {
+                  max-width: 240px
+            }
+
+            .list {
+                  border: 1px solid var(--line);
+                  border-radius: 10px;
+                  background: var(--raise)
+            }
+
+            .store-approval {
+                  margin-bottom: 20px;
+                  overflow: hidden
+            }
+
+            .store-head {
+                  display: flex;
+                  flex-wrap: wrap;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 10px 16px
+            }
+
+            .store-approval>.store-head {
+                  padding: 14px 16px;
+                  background: var(--surface);
+                  border-bottom: 1px solid var(--line)
+            }
+
+            .week-block {
+                  padding: 14px 16px;
+                  border-top: 1px solid var(--line-2);
+                  display: flex;
+                  flex-direction: column;
+                  gap: 10px
+            }
+
+            .store-approval>.store-head+.week-block {
+                  border-top: 0
+            }
+
+            .week-block .scroll {
+                  border-radius: 8px
+            }
+
+            @media (max-width:640px) {
+                  .approval {
+                        grid-template-columns: 1fr
+                  }
+            }
+
+            /* dialog + toast */
+            .overlay {
+                  position: fixed;
+                  inset: 0;
+                  background: #0a1214b3;
+                  display: grid;
+                  place-items: center;
+                  padding: 16px;
+                  z-index: 50;
+                  overflow: auto
+            }
+
+            .dialog {
+                  background: var(--surface);
+                  color: var(--ink);
+                  border: 1px solid var(--line);
+                  border-radius: 12px;
+                  width: min(480px, 100%);
+                  max-height: calc(100vh - 32px);
+                  display: flex;
+                  flex-direction: column;
+                  outline: none
+            }
+
+            .dialog.wide {
+                  width: min(640px, 100%)
+            }
+
+            .dialog header {
+                  display: flex;
+                  align-items: center;
+                  justify-content: space-between;
+                  gap: 12px;
+                  padding: 16px 18px;
+                  border-bottom: 1px solid var(--line)
+            }
+
+            .dialog-body {
+                  padding: 18px;
+                  overflow: auto;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 14px
+            }
+
+            .dialog footer {
+                  padding: 14px 18px;
+                  border-top: 1px solid var(--line);
+                  display: flex;
+                  gap: 10px;
+                  justify-content: flex-end;
+                  flex-wrap: wrap
+            }
+
+            .toasts {
+                  position: fixed;
+                  bottom: 18px;
+                  right: 18px;
+                  display: flex;
+                  flex-direction: column;
+                  gap: 8px;
+                  z-index: 60;
+                  max-width: calc(100vw - 36px)
+            }
+
+            .toast {
+                  background: var(--primary);
+                  color: var(--primary-ink);
+                  padding: 10px 16px;
+                  border-radius: 8px;
+                  font-weight: 600;
+                  box-shadow: 0 6px 20px #0004
+            }
+
+            .toast.error {
+                  background: var(--bad);
+                  color: #fff
+            }
+
+            /* login */
+            .login {
+                  min-height: 100vh;
+                  display: grid;
+                  grid-template-columns: 1.1fr 1fr
+            }
+
+            .login-art {
+                  background: var(--side);
+                  color: var(--side-ink);
+                  padding: clamp(24px, 5vw, 64px);
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: space-between;
+                  gap: 32px
+            }
+
+            .login-art h1 {
+                  font-size: clamp(2.2rem, 5vw, 3.8rem);
+                  font-weight: 800;
+                  max-width: 14ch;
+                  letter-spacing: -.03em
+            }
+
+            .login-art .ticket {
+                  background: #ffffff0d;
+                  border-color: #ffffff26;
+                  border-left-color: var(--c);
+                  color: var(--side-ink);
+                  max-width: 300px
+            }
+
+            .login-art .ticket .t-time {
+                  color: var(--side-mute)
+            }
+
+            .key {
+                  display: grid;
+                  gap: 8px
+            }
+
+            .login-form {
+                  padding: clamp(24px, 5vw, 64px);
+                  display: flex;
+                  flex-direction: column;
+                  justify-content: center;
+                  gap: 16px;
+                  max-width: 460px;
+                  width: 100%;
+                  margin: 0 auto
+            }
+
+            .demo-list {
+                  display: grid;
+                  grid-template-columns: 1fr 1fr;
+                  gap: 8px
+            }
+
+            .demo-list .btn {
+                  flex-direction: column;
+                  align-items: flex-start;
+                  gap: 0;
+                  text-align: left;
+                  font-weight: 600
+            }
+
+            .demo-list small {
+                  font-weight: 400;
+                  color: var(--ink-2)
+            }
+
+            @media (max-width:860px) {
+                  .login {
+                        grid-template-columns: 1fr
+                  }
+
+                  .login-art {
+                        gap: 20px
+                  }
+            }
+      </style>
+</head>
+
+<body>
+      <div id="root"></div>
+
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+      <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+      <script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+      <script>
+            (function () {
+                  "use strict";
+                  var useState = React.useState, useEffect = React.useEffect, useMemo = React.useMemo, useCallback = React.useCallback, useContext = React.useContext, createContext = React.createContext, useRef = React.useRef;
+                  var html = htm.bind(React.createElement);
+
+                  /* =====================================================================
+                     CONFIG
+                     USE_MOCK: true  -> everything runs on in-memory demo data (no server needed)
+                     USE_MOCK: false -> calls BASE_URL with the JWT bearer token. Point BASE_URL
+                                        at your .NET API and adjust AUTH paths if yours differ.
+                     Lists are read from either a bare array or { items|data|results, totalCount|total }.
+                     ===================================================================== */
+                  var CONFIG = {
+                        USE_MOCK: false,
+                        BASE_URL: "http://localhost:5280/api",
+                        AUTH: { login: "/auth/login", refresh: "/auth/refresh" },
+                        WEEK_START: 1 /* 0 = Sunday, 1 = Monday, 6 = Saturday */
+                  };
+
+                  /* ---------- helpers ---------- */
+                  var pad = function (n) { return String(n).padStart(2, "0"); };
+                  var iso = function (d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); };
+                  var parseISO = function (s) { var p = String(s).slice(0, 10).split("-").map(Number); return new Date(p[0], p[1] - 1, p[2]); };
+                  var addDays = function (d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); };
+                  var startOfWeek = function (d) { return addDays(d, -((d.getDay() - CONFIG.WEEK_START + 7) % 7)); };
+                  var today = function () { return iso(new Date()); };
+                  var fmtDay = function (s) { return parseISO(s).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }); };
+                  var fmtDate = function (s) { return parseISO(s).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }); };
+                  var fmtShort = function (s) { return parseISO(s).toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
+                  var hm = function (t) { return t ? String(t).slice(0, 5) : "–"; };
+                  var clockOf = function (s) { return s ? new Date(s).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "–"; };
+                  var dur = function (a, b) { if (!a || !b) return "–"; var m = Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000)); return Math.floor(m / 60) + "h " + pad(m % 60) + "m"; };
+                  var cx = function () { return Array.prototype.filter.call(arguments, Boolean).join(" "); };
+                  var mins = function (t) { var p = String(t).split(":").map(Number); return p[0] * 60 + p[1]; };
+                  var sleep = function (ms) { return new Promise(function (r) { setTimeout(r, ms); }); };
+                  var msgOf = function (e) { return (e && e.message) || "Something went wrong."; };
+                  var MAC_RE = /^([0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/;
+                  var normMac = function (m) { return String(m || "").trim().toUpperCase().replace(/-/g, ":"); };
+                  var initials = function (n) { return String(n || "?").split(/\s+/).slice(0, 2).map(function (w) { return w[0]; }).join("").toUpperCase(); };
+                  var personName = function (u) {
+                        if (!u) return "Unknown user";
+                        var name = String(u.displayName || u.name || u.username || u.email || u.userName || "").trim();
+                        return name || (u.username ? String(u.username).trim() : "Unknown user") || "Unknown user";
+                  };
+                  var range = function (a, b) { var out = [], d = parseISO(a), e = parseISO(b); while (d <= e) { out.push(iso(d)); d = addDays(d, 1); } return out; };
+
+                  var SHIFTS = {
+                        AM: { label: "Morning", v: "--s-am" }, PM: { label: "Night", v: "--s-pm" }, FULL: { label: "Full day", v: "--s-full" },
+                        BW: { label: "Split / between", v: "--s-bw" }, ANN: { label: "Annual leave", v: "--s-ann" }, SL: { label: "Seeking leave", v: "--s-sl" },
+                        OFF: { label: "Day off", v: "--s-off" }
+                  };
+                  var SHIFT_KEYS = ["AM", "PM", "FULL", "BW", "ANN", "SL", "OFF"];
+                  var isLeave = function (t) { return t === "ANN" || t === "SL" || t === "OFF"; };
+                  var REQ_TYPES = { Exception: "Exception", Replacement: "Replacement", SickLeave: "Sick leave", Annual: "Annual leave", OfficialHoliday: "Official holiday" };
+                  var ROLE_LABEL = { Staff: "Staff", StoreManager: "Store manager", AreaManager: "Area manager", Admin: "Admin" };
+                  var DEFAULT_SETTINGS = { morningStart: "09:00:00", morningEnd: "17:00:00", nightStart: "14:00:00", nightEnd: "22:00:00", lateGraceMinutes: 10 };
+                  function shiftTimes(type, st) {
+                        st = st || DEFAULT_SETTINGS;
+                        if (type === "AM") return [st.morningStart, st.morningEnd];
+                        if (type === "PM") return [st.nightStart, st.nightEnd];
+                        if (type === "FULL") return [st.morningStart, st.nightEnd];
+                        if (type === "BW") return ["12:00:00", "20:00:00"];
+                        return ["00:00:00", "00:00:00"];
+                  }
+                  function fakeMac(seed) {
+                        var h = 0; for (var i = 0; i < seed.length; i++)h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+                        var b = [2, (h >>> 24) & 255, (h >>> 16) & 255, (h >>> 8) & 255, h & 255, ((h * 7) >>> 0) & 255];
+                        return b.map(function (x) { return x.toString(16).toUpperCase().padStart(2, "0"); }).join(":");
+                  }
+
+                  /* =====================================================================
+                     MOCK SERVER: mirrors the REST reference so the UI works with no backend
+                     ===================================================================== */
+                  function ApiError(status, message) { this.name = "ApiError"; this.status = status; this.message = message; }
+                  ApiError.prototype = Object.create(Error.prototype);
+
+                  var db = (function () {
+                        var T = new Date();
+                        var d = {
+                              n: 1000,
+                              stores: [
+                                    { id: "s1", name: "Downtown Mall", routerMacs: ["A4:5E:60:11:22:33", "A4:5E:60:11:22:34"], areaManagerId: "u-am1" },
+                                    { id: "s2", name: "Harbor Street", routerMacs: ["B8:27:EB:44:55:66"], areaManagerId: "u-am1" },
+                                    { id: "s3", name: "Airport Road", routerMacs: ["3C:52:82:77:88:99"], areaManagerId: "u-am2" }
+                              ],
+                              users: [], settings: [], schedules: [], attendance: [], requests: [], missions: [], devices: {}
+                        };
+                        var U = function (id, username, displayName, role, storeId) { return { id: id, username: username, email: username + "@rota.example", displayName: displayName, role: role, storeId: storeId, password: "demo" }; };
+                        d.users = [
+                              U("u-admin", "admin", "Nadia Farouk", "Admin"),
+                              U("u-am1", "mira.am", "Mira Saleh", "AreaManager"), U("u-am2", "adam.am", "Adam Hassan", "AreaManager"),
+                              U("u-sm1", "sm.downtown", "Rania Khalil", "StoreManager", "s1"), U("u-sm2", "sm.harbor", "Tamer Fouad", "StoreManager", "s2"), U("u-sm3", "sm.airport", "Dina Mostafa", "StoreManager", "s3"),
+                              U("u-st1", "layla", "Layla Ahmed", "Staff", "s1"), U("u-st2", "omar", "Omar Nabil", "Staff", "s1"), U("u-st3", "nour", "Nour Adel", "Staff", "s1"), U("u-st4", "karim", "Karim Samir", "Staff", "s1"),
+                              U("u-st5", "sara", "Sara Emad", "Staff", "s2"), U("u-st6", "youssef", "Youssef Magdy", "Staff", "s2"), U("u-st7", "hana", "Hana Wael", "Staff", "s2"),
+                              U("u-st8", "mona", "Mona Tarek", "Staff", "s3"), U("u-st9", "tarek", "Tarek Ali", "Staff", "s3")
+                        ];
+                        d.settings = [
+                              { id: "as1", storeId: "s1", morningStart: "09:00:00", morningEnd: "17:00:00", nightStart: "14:00:00", nightEnd: "22:00:00", lateGraceMinutes: 10 },
+                              { id: "as2", storeId: "s2", morningStart: "10:00:00", morningEnd: "18:00:00", nightStart: "15:00:00", nightEnd: "23:00:00", lateGraceMinutes: 5 }
+                        ];
+                        var mk = function (dateStr, t, add) { var dt = parseISO(dateStr), m = mins(t) + (add || 0); dt.setHours(Math.floor(m / 60), m % 60, 0, 0); return dt.toISOString(); };
+                        var pat = ["AM", "AM", "PM", "FULL", "PM", "AM"];
+                        var staff = d.users.filter(function (u) { return u.role === "Staff"; });
+                        staff.forEach(function (u, si) {
+                              var store = d.stores.find(function (s) { return s.id === u.storeId; });
+                              var st = d.settings.find(function (s) { return s.storeId === u.storeId; }) || DEFAULT_SETTINGS;
+                              var sm = d.users.find(function (x) { return x.role === "StoreManager" && x.storeId === u.storeId; });
+                              d.devices[u.id] = { mac: fakeMac(u.id), ip: "192.168.1." + (20 + si) };
+                              for (var k = -10; k <= 13; k++) {
+                                    if ((((k + si) % 7) + 7) % 7 === 3) continue;
+                                    var type = pat[(((k + si) % 6) + 6) % 6], status = k >= 7 ? "Pending" : "Approved";
+                                    if (u.id === "u-st2" && (k === 5 || k === 6)) type = "ANN";
+                                    if (u.id === "u-st4" && k === 2) status = "Rejected";
+                                    var t = shiftTimes(type, st), date = iso(addDays(T, k));
+                                    var sc = { id: "sc-" + u.id + "-" + k, staffId: u.id, date: date, shiftType: type, startTime: t[0], endTime: t[1], status: status, createdByStoreManagerId: sm.id };
+                                    if (status === "Approved") { sc.approvedByAreaManagerId = store.areaManagerId; sc.approvedDate = mk(iso(addDays(T, k - 3)), "10:00:00"); }
+                                    d.schedules.push(sc);
+                                    if (k < 0 && status === "Approved" && !isLeave(type)) {
+                                          var off = ((((k * 7 + si * 5) % 17) + 17) % 17) - 4, manual = (u.id === "u-st2" && k === -3);
+                                          d.attendance.push({
+                                                id: "at-" + u.id + "-" + k, staffId: u.id, scheduleId: sc.id, checkInTime: mk(date, t[0], off), checkOutTime: mk(date, t[1], (si % 4) - 1),
+                                                checkInRouterMac: manual ? undefined : store.routerMacs[0], checkInDeviceMac: manual ? undefined : d.devices[u.id].mac, checkInIp: manual ? undefined : d.devices[u.id].ip,
+                                                verificationMethod: manual ? "Manual" : "Network", isLate: off > st.lateGraceMinutes, enteredManuallyBy: manual ? sm.id : undefined, notes: manual ? "Terminal was offline, entered by manager." : undefined
+                                          });
+                                    }
+                              }
+                        });
+                        var R = function (id, staffId, type, a, b, reason, status, by) { return { id: id, staffId: staffId, type: type, dateFrom: iso(addDays(T, a)), dateTo: iso(addDays(T, b)), reason: reason, status: status, requestedById: by || staffId, approvedByAreaManagerId: status === "Approved" ? "u-am1" : undefined, approvedDate: status === "Approved" ? new Date().toISOString() : undefined }; };
+                        d.requests = [
+                              R("rq1", "u-st1", "Exception", 3, 3, "Bank appointment in the morning, can I start at 12:00?", "Pending"),
+                              R("rq2", "u-st2", "Annual", -20, -16, "Family trip.", "Approved"),
+                              R("rq3", "u-st5", "SickLeave", -1, 0, "Fever. Doctor's note is with the store manager.", "Pending", "u-sm2"),
+                              R("rq4", "u-st3", "Replacement", 4, 4, "Swapping my Saturday shift with Karim.", "Pending"),
+                              R("rq5", "u-st7", "OfficialHoliday", -30, -30, "National holiday.", "Approved", "u-sm2")
+                        ];
+                        d.missions = [
+                              { id: "ms1", staffId: "u-st6", reason: "Inventory count at the Airport Road branch.", dateFrom: iso(addDays(T, 8)), dateTo: iso(addDays(T, 9)), status: "Pending" },
+                              { id: "ms2", staffId: "u-st8", reason: "Training day at head office.", dateFrom: iso(addDays(T, -12)), dateTo: iso(addDays(T, -12)), status: "Approved", approvedByAreaManagerId: "u-am2", approvedDate: new Date().toISOString() }
+                        ];
+                        return d;
+                  })();
+
+                  var nid = function (p) { return p + "-" + (++db.n); };
+                  var pub = function (u) { var o = Object.assign({}, u); delete o.password; return o; };
+                  var paged = function (arr, q) { var page = +q.page || 1, size = +q.pageSize || 20; return { items: arr.slice((page - 1) * size, page * size), page: page, pageSize: size, totalCount: arr.length }; };
+                  var visStores = function (u) { return u.role === "Admin" ? db.stores.map(function (s) { return s.id; }) : u.role === "AreaManager" ? db.stores.filter(function (s) { return s.areaManagerId === u.id; }).map(function (s) { return s.id; }) : [u.storeId]; };
+                  var storeOfStaff = function (id) { var u = db.users.find(function (x) { return x.id === id; }); return u && u.storeId; };
+                  var canSeeUser = function (me, u) { return me.role === "Admin" || u.id === me.id || (u.storeId && visStores(me).indexOf(u.storeId) >= 0); };
+                  var canSeeStaff = function (me, staffId) { return me.role === "Admin" || staffId === me.id || visStores(me).indexOf(storeOfStaff(staffId)) >= 0; };
+                  var need = function (me) { var roles = Array.prototype.slice.call(arguments, 1); if (roles.indexOf(me.role) < 0) throw new ApiError(403, "Your role can't do this."); };
+                  var settingsFor = function (storeId) { return db.settings.find(function (s) { return s.storeId === storeId; }) || DEFAULT_SETTINGS; };
+                  var find = function (coll, id, label) { var x = db[coll].find(function (r) { return r.id === id; }); if (!x) throw new ApiError(404, label + " not found."); return x; };
+
+                  var routes = [];
+                  function on(method, pattern, fn) {
+                        var keys = [];
+                        var re = new RegExp("^" + pattern.replace(/:(\w+)/g, function (_, k) { keys.push(k); return "([^/]+)"; }) + "$");
+                        routes.push({ method: method, re: re, keys: keys, fn: fn });
+                  }
+
+                  on("POST", CONFIG.AUTH.login, function (c) {
+                        var b = c.body || {};
+                        var u = db.users.find(function (x) { return x.username.toLowerCase() === String(b.username || "").toLowerCase() && x.password === b.password; });
+                        if (!u) throw new ApiError(401, "Wrong username or password.");
+                        return { accessToken: "mock." + u.id, refreshToken: "mock-refresh." + u.id, user: pub(u) };
+                  });
+
+                  /* users */
+                  on("GET", "/users", function (c) {
+                        var a = db.users.filter(function (u) { return canSeeUser(c.me, u); });
+                        if (c.q.storeId) a = a.filter(function (u) { return u.storeId === c.q.storeId; });
+                        if (c.q.role) a = a.filter(function (u) { return u.role === c.q.role; });
+                        a.sort(function (x, y) { return x.displayName.localeCompare(y.displayName); });
+                        return paged(a.map(pub), c.q);
+                  });
+                  on("GET", "/users/:id", function (c) { return pub(find("users", c.p.id, "User")); });
+                  on("POST", "/users", function (c) {
+                        need(c.me, "Admin", "AreaManager"); var b = c.body;
+                        if (!b.username || !b.password || !b.displayName) throw new ApiError(400, "Username, password and display name are required.");
+                        if (db.users.some(function (x) { return x.username.toLowerCase() === b.username.toLowerCase(); })) throw new ApiError(409, "That username is already taken.");
+                        var u = { id: nid("u"), username: b.username, email: b.email, displayName: b.displayName, role: b.role, storeId: b.storeId || undefined, password: b.password };
+                        db.users.push(u); return pub(u);
+                  });
+                  on("PUT", "/users/:id", function (c) {
+                        need(c.me, "Admin", "AreaManager"); var u = find("users", c.p.id, "User");
+                        u.displayName = c.body.displayName; u.role = c.body.role; u.storeId = c.body.storeId || undefined; u.profilePictureUrl = c.body.profilePictureUrl; return pub(u);
+                  });
+                  on("DELETE", "/users/:id", function (c) { need(c.me, "Admin", "AreaManager"); var u = find("users", c.p.id, "User"); db.users = db.users.filter(function (x) { return x !== u; }); return null; });
+
+                  /* stores + settings */
+                  on("GET", "/stores", function (c) {
+                        var vis = visStores(c.me); var a = db.stores.filter(function (s) { return vis.indexOf(s.id) >= 0; });
+                        if (c.q.areaManagerId) a = a.filter(function (s) { return s.areaManagerId === c.q.areaManagerId; });
+                        return paged(a, c.q);
+                  });
+                  on("GET", "/stores/:id/attendance-settings", function (c) {
+                        var s = db.settings.find(function (x) { return x.storeId === c.p.id; });
+                        if (!s) throw new ApiError(404, "No attendance hours set for this store yet."); return s;
+                  });
+                  on("PUT", "/stores/:id/attendance-settings", function (c) {
+                        need(c.me, "StoreManager", "AreaManager", "Admin");
+                        var s = db.settings.find(function (x) { return x.storeId === c.p.id; });
+                        if (!s) { s = { id: nid("as"), storeId: c.p.id }; db.settings.push(s); }
+                        ["morningStart", "morningEnd", "nightStart", "nightEnd", "lateGraceMinutes"].forEach(function (k) { s[k] = c.body[k]; }); return s;
+                  });
+                  on("GET", "/stores/:id", function (c) { return find("stores", c.p.id, "Store"); });
+                  on("POST", "/stores", function (c) {
+                        need(c.me, "Admin", "AreaManager"); var b = c.body;
+                        if (!b.name) throw new ApiError(400, "Store name is required.");
+                        var s = { id: nid("s"), name: b.name, routerMacs: (b.routerMacs || []).map(normMac), areaManagerId: c.me.role === "AreaManager" ? c.me.id : (b.areaManagerId || undefined) };
+                        db.stores.push(s); return s;
+                  });
+                  on("PUT", "/stores/:id", function (c) {
+                        need(c.me, "Admin", "AreaManager"); var s = find("stores", c.p.id, "Store");
+                        s.name = c.body.name; s.routerMacs = (c.body.routerMacs || []).map(normMac);
+                        if (c.me.role === "Admin") s.areaManagerId = c.body.areaManagerId || undefined; return s;
+                  });
+                  on("DELETE", "/stores/:id", function (c) { need(c.me, "Admin", "AreaManager"); var s = find("stores", c.p.id, "Store"); db.stores = db.stores.filter(function (x) { return x !== s; }); return null; });
+
+                  /* schedules */
+                  on("GET", "/schedules/pending", function (c) {
+                        need(c.me, "AreaManager", "Admin");
+                        return paged(db.schedules.filter(function (s) { return s.status === "Pending" && canSeeStaff(c.me, s.staffId); }).sort(function (a, b) { return a.date.localeCompare(b.date); }), c.q);
+                  });
+                  on("GET", "/schedules", function (c) {
+                        var q = c.q, a = db.schedules.filter(function (s) { return canSeeStaff(c.me, s.staffId); });
+                        if (c.me.role === "Staff") a = a.filter(function (s) { return s.staffId === c.me.id; });
+                        if (q.staffId) a = a.filter(function (s) { return s.staffId === q.staffId; });
+                        if (q.storeId) a = a.filter(function (s) { return storeOfStaff(s.staffId) === q.storeId; });
+                        if (q.from) a = a.filter(function (s) { return s.date >= q.from; });
+                        if (q.to) a = a.filter(function (s) { return s.date <= q.to; });
+                        if (q.status) a = a.filter(function (s) { return s.status === q.status; });
+                        a.sort(function (x, y) { return x.date.localeCompare(y.date) || x.startTime.localeCompare(y.startTime); });
+                        return paged(a, q);
+                  });
+                  on("GET", "/schedules/:id", function (c) { return find("schedules", c.p.id, "Schedule"); });
+                  on("POST", "/schedules", function (c) {
+                        need(c.me, "StoreManager", "Admin"); var b = c.body;
+                        if (c.me.role === "StoreManager" && storeOfStaff(b.staffId) !== c.me.storeId) throw new ApiError(403, "You can only schedule staff in your own store.");
+                        var s = { id: nid("sc"), staffId: b.staffId, date: b.date, shiftType: b.shiftType, startTime: b.startTime, endTime: b.endTime, status: "Pending", createdByStoreManagerId: c.me.id };
+                        db.schedules.push(s); return s;
+                  });
+                  on("PUT", "/schedules/:id", function (c) {
+                        need(c.me, "StoreManager", "Admin"); var s = find("schedules", c.p.id, "Schedule");
+                        s.shiftType = c.body.shiftType; s.startTime = c.body.startTime; s.endTime = c.body.endTime;
+                        s.status = "Pending"; s.approvedByAreaManagerId = undefined; s.approvedDate = undefined; return s;
+                  });
+                  on("POST", "/schedules/:id/approve", function (c) { need(c.me, "AreaManager", "Admin"); var s = find("schedules", c.p.id, "Schedule"); s.status = "Approved"; s.approvedByAreaManagerId = c.me.id; s.approvedDate = new Date().toISOString(); return s; });
+                  on("POST", "/schedules/:id/reject", function (c) { need(c.me, "AreaManager", "Admin"); var s = find("schedules", c.p.id, "Schedule"); s.status = "Rejected"; s.approvedByAreaManagerId = c.me.id; s.approvedDate = new Date().toISOString(); return s; });
+                  on("DELETE", "/schedules/:id", function (c) { need(c.me, "StoreManager", "AreaManager", "Admin"); var s = find("schedules", c.p.id, "Schedule"); db.schedules = db.schedules.filter(function (x) { return x !== s; }); return null; });
+
+                  /* attendance */
+                  function lateFor(staffId, dateStr, when) {
+                        var sc = db.schedules.find(function (s) { return s.staffId === staffId && s.date === dateStr && s.status === "Approved" && !isLeave(s.shiftType); });
+                        var st = settingsFor(storeOfStaff(staffId));
+                        var m = when.getHours() * 60 + when.getMinutes();
+                        return { sc: sc, late: !!sc && m > mins(sc.startTime) + (st.lateGraceMinutes || 0) };
+                  }
+                  function checkNetwork(me, b) {
+                        var store = db.stores.find(function (s) { return s.id === me.storeId; });
+                        if (!store) throw new ApiError(400, "Your account isn't linked to a store.");
+                        if (store.routerMacs.indexOf(normMac(b.routerMac)) < 0) throw new ApiError(400, "This network isn't registered for " + store.name + ". Connect to the store network and try again.");
+                        var dev = db.devices[me.id];
+                        if (!dev) { db.devices[me.id] = { mac: normMac(b.deviceMac), ip: b.deviceIp }; }
+                        else if (dev.mac !== normMac(b.deviceMac)) throw new ApiError(400, "This computer isn't registered to you. Ask your store manager to enter your attendance.");
+                        return store;
+                  }
+                  on("POST", "/attendance/check-in", function (c) {
+                        var store = checkNetwork(c.me, c.body), now = new Date(), t = iso(now);
+                        if (db.attendance.some(function (a) { return a.staffId === c.me.id && a.checkInTime && iso(new Date(a.checkInTime)) === t; })) throw new ApiError(409, "You've already checked in today.");
+                        var l = lateFor(c.me.id, t, now);
+                        var rec = { id: nid("at"), staffId: c.me.id, scheduleId: l.sc && l.sc.id, checkInTime: now.toISOString(), checkInRouterMac: normMac(c.body.routerMac), checkInDeviceMac: normMac(c.body.deviceMac), checkInIp: c.body.deviceIp, verificationMethod: "Network", isLate: l.late };
+                        db.attendance.push(rec); return rec;
+                  });
+                  on("POST", "/attendance/check-out", function (c) {
+                        checkNetwork(c.me, c.body); var t = today();
+                        var rec = db.attendance.find(function (a) { return a.staffId === c.me.id && a.checkInTime && !a.checkOutTime && iso(new Date(a.checkInTime)) === t; });
+                        if (!rec) throw new ApiError(404, "There's no open check-in to close.");
+                        rec.checkOutTime = new Date().toISOString(); return rec;
+                  });
+                  on("POST", "/attendance/manual", function (c) {
+                        need(c.me, "StoreManager", "AreaManager", "Admin"); var b = c.body;
+                        if (!canSeeStaff(c.me, b.staffId)) throw new ApiError(403, "That person isn't in your stores.");
+                        var when = new Date(b.date + "T" + b.checkInTime), l = lateFor(b.staffId, b.date, when);
+                        var rec = { id: nid("at"), staffId: b.staffId, scheduleId: l.sc && l.sc.id, checkInTime: when.toISOString(), checkOutTime: b.checkOutTime ? new Date(b.date + "T" + b.checkOutTime).toISOString() : undefined, verificationMethod: "Manual", isLate: l.late, enteredManuallyBy: c.me.id, notes: b.notes };
+                        db.attendance.push(rec); return rec;
+                  });
+                  function attFilter(a, q) {
+                        if (q.staffId) a = a.filter(function (r) { return r.staffId === q.staffId; });
+                        if (q.storeId) a = a.filter(function (r) { return storeOfStaff(r.staffId) === q.storeId; });
+                        if (q.from) a = a.filter(function (r) { return iso(new Date(r.checkInTime)) >= q.from; });
+                        if (q.to) a = a.filter(function (r) { return iso(new Date(r.checkInTime)) <= q.to; });
+                        return a.sort(function (x, y) { return y.checkInTime.localeCompare(x.checkInTime); });
+                  }
+                  on("GET", "/attendance/me", function (c) { return paged(attFilter(db.attendance.filter(function (r) { return r.staffId === c.me.id; }), c.q), c.q); });
+                  on("GET", "/attendance/:id", function (c) { return find("attendance", c.p.id, "Attendance record"); });
+                  on("GET", "/attendance", function (c) {
+                        need(c.me, "StoreManager", "AreaManager", "Admin");
+                        return paged(attFilter(db.attendance.filter(function (r) { return canSeeStaff(c.me, r.staffId); }), c.q), c.q);
+                  });
+
+                  /* requests + missions */
+                  function approvalRoutes(base, coll, label, onApprove) {
+                        on("GET", base + "/pending", function (c) { need(c.me, "AreaManager", "Admin"); return paged(db[coll].filter(function (r) { return r.status === "Pending" && canSeeStaff(c.me, r.staffId); }), c.q); });
+                        on("GET", base, function (c) {
+                              var a = db[coll].filter(function (r) { return canSeeStaff(c.me, r.staffId); });
+                              if (c.me.role === "Staff") a = a.filter(function (r) { return r.staffId === c.me.id; });
+                              if (c.q.staffId) a = a.filter(function (r) { return r.staffId === c.q.staffId; });
+                              if (c.q.type) a = a.filter(function (r) { return r.type === c.q.type; });
+                              if (c.q.status) a = a.filter(function (r) { return r.status === c.q.status; });
+                              a.sort(function (x, y) { return y.dateFrom.localeCompare(x.dateFrom); }); return paged(a, c.q);
+                        });
+                        on("GET", base + "/:id", function (c) { return find(coll, c.p.id, label); });
+                        on("POST", base, function (c) {
+                              var b = c.body;
+                              if (!b.reason || !b.dateFrom || !b.dateTo) throw new ApiError(400, "Dates and a reason are required.");
+                              if (b.dateTo < b.dateFrom) throw new ApiError(400, "The end date can't be before the start date.");
+                              if (c.me.role === "Staff" && b.staffId !== c.me.id) throw new ApiError(403, "You can only submit for yourself.");
+                              var r = { id: nid(coll === "requests" ? "rq" : "ms"), staffId: b.staffId, reason: b.reason, dateFrom: b.dateFrom, dateTo: b.dateTo, status: "Pending" };
+                              if (coll === "requests") { r.type = b.type; r.requestedById = c.me.id; }
+                              db[coll].push(r); return r;
+                        });
+                        on("POST", base + "/:id/approve", function (c) {
+                              need(c.me, "AreaManager", "Admin"); var r = find(coll, c.p.id, label);
+                              r.status = "Approved"; r.approvedByAreaManagerId = c.me.id; r.approvedDate = new Date().toISOString(); if (onApprove) onApprove(r, c.me); return r;
+                        });
+                        on("POST", base + "/:id/reject", function (c) { need(c.me, "AreaManager", "Admin"); var r = find(coll, c.p.id, label); r.status = "Rejected"; r.approvedByAreaManagerId = c.me.id; r.approvedDate = new Date().toISOString(); return r; });
+                  }
+                  approvalRoutes("/requests", "requests", "Request", function (r, me) {
+                        if (["Annual", "SickLeave", "OfficialHoliday"].indexOf(r.type) < 0) return;
+                        range(r.dateFrom, r.dateTo).forEach(function (day) {
+                              db.schedules = db.schedules.filter(function (s) { return !(s.staffId === r.staffId && s.date === day); });
+                              db.schedules.push({ id: nid("sc"), staffId: r.staffId, date: day, shiftType: r.type === "SickLeave" ? "SL" : (r.type === "OfficialHoliday" ? "OFF" : "ANN"), startTime: "00:00:00", endTime: "00:00:00", status: "Approved", createdByStoreManagerId: r.requestedById, approvedByAreaManagerId: me.id, approvedDate: new Date().toISOString() });
+                        });
+                  });
+                  approvalRoutes("/missions", "missions", "Mission");
+
+                  async function mockHandle(method, path, q, body, token) {
+                        await sleep(80 + Math.random() * 120);
+                        for (var i = 0; i < routes.length; i++) {
+                              var r = routes[i]; if (r.method !== method) continue;
+                              var m = r.re.exec(path); if (!m) continue;
+                              var p = {}; r.keys.forEach(function (k, j) { p[k] = decodeURIComponent(m[j + 1]); });
+                              var me = null;
+                              if (path !== CONFIG.AUTH.login) {
+                                    var id = String(token || "").split(".")[1];
+                                    me = db.users.find(function (u) { return u.id === id; });
+                                    if (!me) throw new ApiError(401, "Your session has expired. Sign in again.");
+                              }
+                              var out = r.fn({ me: me, p: p, q: q || {}, body: body || {} });
+                              return out == null ? null : JSON.parse(JSON.stringify(out));
+                        }
+                        throw new ApiError(404, "No such endpoint: " + method + " " + path);
+                  }
+
+                  /* =====================================================================
+                     API CLIENT
+                     ===================================================================== */
+                  var session = { token: null, refresh: null, onExpire: null };
+                  function persist() { if (CONFIG.USE_MOCK) return; try { localStorage.setItem("rota.session", JSON.stringify({ t: session.token, r: session.refresh })); } catch (e) { } }
+                  function loadSession() { if (CONFIG.USE_MOCK) return; try { var s = JSON.parse(localStorage.getItem("rota.session") || "null"); if (s) { session.token = s.t; session.refresh = s.r; } } catch (e) { } }
+                  function clearSession() { session.token = null; session.refresh = null; try { localStorage.removeItem("rota.session"); } catch (e) { } }
+                  function decodeJwt(t) {
+                        try {
+                              var p = JSON.parse(decodeURIComponent(escape(atob(t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")))));
+                              return {
+                                    id: p["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || p.nameid || p.sub,
+                                    role: p["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"] || p.role
+                              };
+                        } catch (e) { return {}; }
+                  }
+                  function clean(o) { var out = {}; Object.keys(o || {}).forEach(function (k) { if (o[k] !== undefined && o[k] !== null && o[k] !== "") out[k] = o[k]; }); return out; }
+                  async function tryRefresh() {
+                        try {
+                              var res = await fetch(CONFIG.BASE_URL + CONFIG.AUTH.refresh, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refreshToken: session.refresh }) });
+                              if (!res.ok) return false; var d = await res.json();
+                              session.token = d.accessToken || d.token; session.refresh = d.refreshToken || session.refresh; persist(); return !!session.token;
+                        } catch (e) { return false; }
+                  }
+                  async function request(method, path, opts) {
+                        opts = opts || {}; var q = clean(opts.query);
+                        if (CONFIG.USE_MOCK) return mockHandle(method, path, q, opts.body, session.token);
+                        var qs = Object.keys(q).length ? "?" + Object.keys(q).map(function (k) { return encodeURIComponent(k) + "=" + encodeURIComponent(q[k]); }).join("&") : "";
+                        var go = function () {
+                              var h = { "Content-Type": "application/json" }; if (session.token) h.Authorization = "Bearer " + session.token;
+                              return fetch(CONFIG.BASE_URL + path + qs, { method: method, headers: h, body: opts.body ? JSON.stringify(opts.body) : undefined });
+                        };
+                        var res = await go();
+                        if (res.status === 401 && session.refresh && path !== CONFIG.AUTH.login && path !== CONFIG.AUTH.refresh && await tryRefresh()) res = await go();
+                        if (res.status === 401 && path !== CONFIG.AUTH.login) { if (session.onExpire) session.onExpire(); }
+                        if (!res.ok) {
+                              var m = res.statusText;
+                              try { var d = await res.json(); m = d.detail || d.message || d.title || (d.errors ? Object.keys(d.errors).map(function (k) { return [].concat(d.errors[k]).join(" "); }).join(" ") : m); } catch (e) { }
+                              throw new ApiError(res.status, m || "Request failed.");
+                        }
+                        if (res.status === 204) return null;
+                        var txt = await res.text(); return txt ? JSON.parse(txt) : null;
+                  }
+                  function norm(r) {
+                        if (Array.isArray(r)) return { items: r, page: 1, pageSize: r.length || 1, totalCount: r.length };
+                        var items = r.items || r.data || r.results || [];
+                        return { items: items, page: r.page || r.pageNumber || 1, pageSize: r.pageSize || 20, totalCount: r.totalCount != null ? r.totalCount : (r.total != null ? r.total : (r.totalItems != null ? r.totalItems : items.length)) };
+                  }
+                  var L = function (path) { return function (query) { return request("GET", path, { query: query }).then(norm); }; };
+                  var POST = function (path) { return function (body) { return request("POST", path, { body: body }); }; };
+                  var act = function (base, verb) { return function (id) { return request("POST", base + "/" + id + "/" + verb); }; };
+                  var api = {
+                        async login(email, password) {
+                              var r = await request("POST", CONFIG.AUTH.login, { body: { email: email, password: password } });
+                              session.token = r.accessToken || r.token || r.jwt; session.refresh = r.refreshToken || null; persist();
+                              if (r.user) return r.user;
+                              var c = decodeJwt(session.token); return request("GET", "/users/" + c.id);
+                        },
+                        users: { list: L("/users"), get: function (id) { return request("GET", "/users/" + id); }, create: POST("/users"), update: function (id, b) { return request("PUT", "/users/" + id, { body: b }); }, remove: function (id) { return request("DELETE", "/users/" + id); } },
+                        stores: { list: L("/stores"), create: POST("/stores"), update: function (id, b) { return request("PUT", "/stores/" + id, { body: b }); }, remove: function (id) { return request("DELETE", "/stores/" + id); } },
+                        settings: { get: function (id) { return request("GET", "/stores/" + id + "/attendance-settings"); }, save: function (id, b) { return request("PUT", "/stores/" + id + "/attendance-settings", { body: b }); } },
+                        schedules: { list: L("/schedules"), pending: L("/schedules/pending"), create: POST("/schedules"), update: function (id, b) { return request("PUT", "/schedules/" + id, { body: b }); }, approve: act("/schedules", "approve"), reject: act("/schedules", "reject"), remove: function (id) { return request("DELETE", "/schedules/" + id); } },
+                        attendance: { list: L("/attendance"), mine: L("/attendance/me"), checkIn: POST("/attendance/check-in"), checkOut: POST("/attendance/check-out"), manual: POST("/attendance/manual") },
+                        requests: { list: L("/requests"), pending: L("/requests/pending"), create: POST("/requests"), approve: act("/requests", "approve"), reject: act("/requests", "reject") },
+                        missions: { list: L("/missions"), pending: L("/missions/pending"), create: POST("/missions"), approve: act("/missions", "approve"), reject: act("/missions", "reject") }
+                  };
+
+                  /* =====================================================================
+                     CHECK-IN DEVICE ADAPTER
+                     Browsers can't read MAC addresses. Pick one approach and implement it here:
+                     - Desktop agent: expose window.attendanceAgent.getNetworkInfo() -> {routerMac, deviceMac, deviceIp}
+                     - Server-side inference: have the backend derive the router MAC and stop sending it.
+                     In demo mode this simulates a store PC so the flow can be tried.
+                     ===================================================================== */
+                  function hasAgent() { return !!(window.attendanceAgent && typeof window.attendanceAgent.getNetworkInfo === "function"); }
+                  function detectLocalIp() {
+                        var ips = [];
+                        try {
+                              var pc = new RTCPeerConnection({ iceServers: [{ urls: "stun:stun.l.google.com:19302" }] });
+                              pc.onicecandidate = function (e) {
+                                    if (!e.candidate) return;
+                                    var text = e.candidate.candidate || "";
+                                    var match = text.match(/([0-9]{1,3}(?:\.[0-9]{1,3}){3})/);
+                                    if (match) ips.push(match[1]);
+                              };
+                              pc.createDataChannel("");
+                              pc.createOffer().then(function (offer) { return pc.setLocalDescription(offer); }).catch(function () { });
+                        } catch (e) { }
+                        var ip = ips.find(function (v) { return /^10\.|^172\.(1[6-9]|2[0-9]|3[0-1])\.|^192\.168\./.test(v); }) || "127.0.0.1";
+                        return ip;
+                  }
+                  function ensureMac(v) {
+                        return v ? normMac(v) : "";
+                  }
+                  function readStoredRouterMac() {
+                        try { return normMac(localStorage.getItem("attendance.routerMac") || ""); } catch (e) { return ""; }
+                  }
+                  function saveStoredRouterMac(v) {
+                        try { if (v && v.trim()) localStorage.setItem("attendance.routerMac", normMac(v)); } catch (e) { }
+                  }
+                  async function browserNetworkInfo(user, routerMacOverride, store) {
+                        var storedRouter = readStoredRouterMac();
+                        var storeRouter = (store && Array.isArray(store.routerMacs) && store.routerMacs.length) ? store.routerMacs[0] : "";
+                        var routerMac = ensureMac(routerMacOverride != null ? routerMacOverride : (storedRouter || storeRouter));
+                        var deviceMac = ensureMac(localStorage.getItem("attendance.deviceMac") || fakeMac((user && user.id) || "browser-device"));
+                        try { localStorage.setItem("attendance.deviceMac", deviceMac); } catch (e) { }
+                        if (routerMac) saveStoredRouterMac(routerMac);
+                        return {
+                              routerMac: routerMac,
+                              deviceMac: deviceMac
+                        };
+                  }
+                  async function readNetwork(sim, store, user, routerMacOverride) {
+                        if (hasAgent()) return window.attendanceAgent.getNetworkInfo();
+                        if (CONFIG.USE_MOCK) {
+                              var macs = (store && store.routerMacs) || [];
+                              return { routerMac: sim === "router" ? "DE:AD:BE:EF:00:01" : (macs[0] || "A4:5E:60:00:00:01"), deviceMac: sim === "device" ? "00:1B:44:11:3A:B7" : fakeMac(user.id) };
+                        }
+                        return browserNetworkInfo(user, routerMacOverride, store);
+                  }
+                  if (!window.attendanceAgent) {
+                        window.attendanceAgent = {
+                              async getNetworkInfo() {
+                                    return browserNetworkInfo();
+                              }
+                        };
+                  }
+
+                  /* =====================================================================
+                     CONTEXT + HOOKS
+                     ===================================================================== */
+                  var AuthCtx = createContext(null), ToastCtx = createContext(null), DirCtx = createContext(null), RouterCtx = createContext(null);
+                  var useAuth = function () { return useContext(AuthCtx); };
+                  var useToast = function () { return useContext(ToastCtx); };
+                  var useDir = function () { return useContext(DirCtx); };
+                  var useRouter = function () { return useContext(RouterCtx); };
+                  var items = function (q) { return (q.data && q.data.items) || []; };
+
+                  function useQuery(fn, deps) {
+                        var st = useState({ loading: true, data: null, error: null }), s = st[0], setS = st[1];
+                        var tk = useState(0), tick = tk[0], setTick = tk[1];
+                        useEffect(function () {
+                              var live = true;
+                              setS(function (p) { return { loading: true, data: p.data, error: null }; });
+                              Promise.resolve().then(fn).then(function (d) { if (live) setS({ loading: false, data: d, error: null }); }, function (e) { if (live) setS({ loading: false, data: null, error: e }); });
+                              return function () { live = false; };
+                        }, deps.concat([tick]));
+                        return { loading: s.loading, data: s.data, error: s.error, refetch: function () { setTick(function (t) { return t + 1; }); } };
+                  }
+                  function useNow() {
+                        var st = useState(new Date()), n = st[0], setN = st[1];
+                        useEffect(function () { var t = setInterval(function () { setN(new Date()); }, 1000); return function () { clearInterval(t); }; }, []);
+                        return n;
+                  }
+                  function useBind(initial) {
+                        var st = useState(initial), v = st[0], setV = st[1];
+                        var bind = function (k) { return { value: v[k] == null ? "" : v[k], onChange: function (e) { var val = e.target.value; setV(function (p) { var o = Object.assign({}, p); o[k] = val; return o; }); } }; };
+                        return [v, setV, bind];
+                  }
+
+                  /* =====================================================================
+                     SHARED UI
+                     ===================================================================== */
+                  function PageHeader(p) {
+                        return html`<div className="page-head"><div><h1>${p.title}</h1>${p.sub && html`<p className="muted">${p.sub}</p>`}</div>${p.children && html`<div className="row">${p.children}</div>`}</div>`;
+                  }
+                  function Empty(p) { return html`<div className="empty"><b>${p.title || "Nothing here yet"}</b>${p.text && html`<span>${p.text}</span>`}</div>`; }
+                  function ErrorBox(p) { return html`<div className="alert bad" role="alert">${msgOf(p.error)} ${p.retry && html`<button type="button" className="btn sm" onClick=${p.retry}>Try again</button>`}</div>`; }
+                  function Field(p) { return html`<label className="field"><span>${p.label}</span>${p.children}${p.hint && html`<span className="hint">${p.hint}</span>`}</label>`; }
+                  function StatusBadge(p) { return html`<span className=${"badge " + String(p.status).toLowerCase()}>${p.status}</span>`; }
+                  function Avatar(p) {
+                        var hasImage = !!(p.image && p.image.trim() && p.image !== "null" && p.image !== "undefined");
+                        return html`<span className="avatar" aria-hidden="true">${hasImage ? html`<img src=${p.image} alt="" />` : html`<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M12 12c2.76 0 5-2.24 5-5S14.76 2 12 2 7 4.24 7 7s2.24 5 5 5Zm-7 8c0-2.9 3.1-5 7-5s7 2.1 7 5v1H5v-1Z" fill="currentColor"/></svg>`}</span>`;
+                  }
+                  function Person(p) {
+                        var name = personName({ displayName: p.name, username: p.username, email: p.email, userName: p.userName, name: p.name });
+                        return html`<span className="person"><${Avatar} name=${name} image=${p.image}/><span>${name}${p.sub && html`<br/><small className="muted">${p.sub}</small>`}</span></span>`;
+                  }
+
+                  function Legend(p) {
+                        return html`<ul className="legend" aria-label="Shift colours">${SHIFT_KEYS.map(function (k) { return html`<li key=${k}><i style=${{ background: "var(" + SHIFTS[k].v + ")" }}></i>${SHIFTS[k].label}</li>`; })}
+    ${p.pending && html`<li><i className="dashed"></i>Dashed outline: waiting for approval</li>`}</ul>`;
+                  }
+                  function Ticket(p) {
+                        var s = p.s, m = SHIFTS[s.shiftType], leave = isLeave(s.shiftType);
+                        var inner = html`<span className="t-name">${m.label}</span><span className="t-time">${leave ? "All day" : hm(s.startTime) + "–" + hm(s.endTime)}</span>${p.who && html`<span className="t-who">${p.who}</span>`}${s.status !== "Approved" && !p.hideStatus && html`<span className="t-status">${s.status === "Pending" ? "Awaiting approval" : "Rejected"}</span>`}`;
+                        var cls = cx("ticket", s.status.toLowerCase()), st = { "--c": "var(" + m.v + ")" };
+                        return p.onClick ? html`<button type="button" className=${cls} style=${st} onClick=${p.onClick}>${inner}</button>` : html`<div className=${cls} style=${st}>${inner}</div>`;
+                  }
+                  function Modal(p) {
+                        var ref = useRef(null);
+                        useEffect(function () {
+                              var prev = document.activeElement; if (ref.current) ref.current.focus();
+                              var k = function (e) { if (e.key === "Escape") p.onClose(); };
+                              document.addEventListener("keydown", k);
+                              return function () { document.removeEventListener("keydown", k); if (prev && prev.focus) prev.focus(); };
+                        }, []);
+                        return html`<div className="overlay" onMouseDown=${function (e) { if (e.target === e.currentTarget) p.onClose(); }}>
+    <div className=${cx("dialog", p.wide && "wide")} role="dialog" aria-modal="true" aria-label=${p.title} tabIndex="-1" ref=${ref}>
+      <header><h2>${p.title}</h2><button type="button" className="btn ghost sm" onClick=${p.onClose}>Close</button></header>
+      <div className="dialog-body">${p.children}</div>
+      ${p.footer && html`<footer>${p.footer}</footer>`}
+    </div></div>`;
+                  }
+                  function Confirm(p) {
+                        return html`<${Modal} title=${p.title} onClose=${p.onCancel} footer=${html`<button type="button" className="btn" onClick=${p.onCancel}>Cancel</button><button type="button" className=${cx("btn", p.danger ? "danger" : "primary")} onClick=${p.onConfirm} disabled=${p.busy}>${p.confirmLabel}</button>`}><p>${p.body}</p><//>`;
+                  }
+                  function Pager(p) {
+                        var a = (p.page - 1) * p.pageSize + 1, b = Math.min(p.total, p.page * p.pageSize);
+                        return html`<div className="pager"><span>${p.total ? a + "–" + b + " of " + p.total : "No results"}</span><span className="row">
+    <button type="button" className="btn sm" disabled=${p.page <= 1} onClick=${function () { p.onPage(p.page - 1); }}>Previous</button>
+    <button type="button" className="btn sm" disabled=${b >= p.total} onClick=${function () { p.onPage(p.page + 1); }}>Next</button></span></div>`;
+                  }
+                  function DataTable(p) {
+                        var rows = p.rows || [];
+                        return html`<div>
+    <div className="scroll"><table className="tbl">
+      <thead><tr>${p.cols.map(function (c) { return html`<th key=${c.h} className=${c.cls}>${c.h}</th>`; })}</tr></thead>
+      <tbody>${rows.map(function (r) { return html`<tr key=${r.id}>${p.cols.map(function (c) { return html`<td key=${c.h} className=${c.cls}>${c.render(r)}</td>`; })}</tr>`; })}</tbody>
+    </table>
+    ${!p.loading && rows.length === 0 && html`<${Empty} title=${p.emptyTitle} text=${p.empty}/>`}
+    ${p.loading && rows.length === 0 && html`<p className="muted pad">Loading…</p>`}
+    </div>
+    ${p.onPage && p.total > 0 && html`<${Pager} page=${p.page} pageSize=${p.pageSize} total=${p.total} onPage=${p.onPage}/>`}
+  </div>`;
+                  }
+                  function Tabs(p) {
+                        return html`<div className="tabs" role="tablist">${p.tabs.map(function (t) { return html`<button type="button" role="tab" key=${t.id} className="tab" aria-selected=${p.value === t.id} onClick=${function () { p.onChange(t.id); }}>${t.label}${t.count != null && html`<span className="count">${t.count}</span>`}</button>`; })}</div>`;
+                  }
+
+                  /* providers */
+                  function ToastProvider(p) {
+                        var st = useState([]), list = st[0], setList = st[1];
+                        var push = useCallback(function (text, kind) {
+                              var id = Math.random(); setList(function (l) { return l.concat([{ id: id, text: text, kind: kind }]); });
+                              setTimeout(function () { setList(function (l) { return l.filter(function (x) { return x.id !== id; }); }); }, 3800);
+                        }, []);
+                        return html`<${ToastCtx.Provider} value=${push}>${p.children}<div className="toasts" role="status" aria-live="polite">${list.map(function (t) { return html`<div key=${t.id} className=${cx("toast", t.kind === "error" && "error")}>${t.text}</div>`; })}</div><//>`;
+                  }
+                  function RouterProvider(p) {
+                        var st = useState(function () { try { return location.hash.slice(1); } catch (e) { return ""; } }), path = st[0], setPath = st[1];
+                        useEffect(function () { var f = function () { try { setPath(location.hash.slice(1)); } catch (e) { } }; window.addEventListener("hashchange", f); return function () { window.removeEventListener("hashchange", f); }; }, []);
+                        var go = useCallback(function (to) { setPath(to); try { if (location.hash.slice(1) !== to) location.hash = to; } catch (e) { } }, []);
+                        return html`<${RouterCtx.Provider} value=${{ path: path, go: go }}>${p.children}<//>`;
+                  }
+                  function RouteReset(p) {
+                        var r = useRouter();
+                        useEffect(function () { if (p.gen > 0) r.go(""); }, [p.gen]);
+                        return null;
+                  }
+                  function DirProvider(p) {
+                        var st = useState({ users: [], stores: [], ready: false }), d = st[0], setD = st[1];
+                        var load = useCallback(async function () {
+                              var r = await Promise.all([api.users.list({ pageSize: 200 }), api.stores.list({ pageSize: 100 })]);
+                              setD({ users: r[0].items, stores: r[1].items, ready: true });
+                        }, []);
+                        useEffect(function () { load().catch(function () { setD(function (x) { return Object.assign({}, x, { ready: true }); }); }); }, []);
+                        var value = useMemo(function () {
+                              return {
+                                    users: d.users, stores: d.stores, reload: load,
+                                    userName: function (id) { var u = d.users.find(function (x) { return x.id === id; }); return personName(u); },
+                                    storeName: function (id) { var s = d.stores.find(function (x) { return x.id === id; }); return s ? s.name : "–"; }
+                              };
+                        }, [d, load]);
+                        if (!d.ready) return html`<div className="boot">Loading…</div>`;
+                        return html`<${DirCtx.Provider} value=${value}>${p.children}<//>`;
+                  }
+
+                  /* =====================================================================
+                     STAFF PAGES
+                     ===================================================================== */
+                  function CheckInPage() {
+                        var auth = useAuth(), user = auth.user, dir = useDir(), toast = useToast();
+                        var now = useNow(), day = iso(now);
+                        var store = dir.stores.find(function (s) { return s.id === user.storeId; });
+                        var sched = useQuery(function () { return api.schedules.list({ staffId: user.id, from: day, to: day, pageSize: 10 }); }, [user.id, day]);
+                        var att = useQuery(function () { return api.attendance.mine({ from: day, to: day, pageSize: 5 }); }, [day]);
+                        var sm = useState("ok"), sim = sm[0], setSim = sm[1];
+                        var routerState = useState(readStoredRouterMac()), routerMac = routerState[0], setRouterMac = routerState[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var agent = hasAgent(), canRead = agent || CONFIG.USE_MOCK || !!routerMac.trim();
+                        var rec = items(att)[0], phase = !rec ? "idle" : rec.checkOutTime ? "done" : "in";
+                        var shift = items(sched).find(function (s) { return s.status === "Approved"; });
+                        async function punch() {
+                              setBusy(true); setErr("");
+                              try {
+                                    var info = await readNetwork(sim, store, user, routerMac);
+                                    if (!info || !info.routerMac || !info.routerMac.trim() || info.routerMac === "00:00:00:00:00:00") {
+                                          throw new Error("No valid router MAC was found for this store. Enter the store router MAC first.");
+                                    }
+                                    console.log("Attendance network info:", {
+                                          routerMac: info.routerMac,
+                                          deviceMac: info.deviceMac,
+                                          storeId: store && store.id,
+                                          userId: user && user.id
+                                    });
+                                    if (phase === "idle") { await api.attendance.checkIn({ routerMac: info.routerMac, deviceMac: info.deviceMac }); toast("Checked in", "ok"); }
+                                    else { await api.attendance.checkOut({ routerMac: info.routerMac, deviceMac: info.deviceMac }); toast("Checked out", "ok"); }
+                                    att.refetch();
+                              } catch (e) { setErr(e.message === "NO_AGENT" ? "This browser can't read the network details needed to check in." : msgOf(e)); }
+                              finally { setBusy(false); }
+                        }
+                        return html`<section>
+    <${PageHeader} title="Check in" sub=${store ? store.name : ""}/>
+    <div className="punch-layout">
+      <div className="punch-main">
+        <div className="clock">${pad(now.getHours())}:${pad(now.getMinutes())}<span className="secs">${pad(now.getSeconds())}</span></div>
+        <p className="muted">${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
+        <button type="button" className="punch" disabled=${busy || phase === "done" || !canRead} onClick=${punch}>${busy ? "Checking…" : phase === "idle" ? "Check in" : phase === "in" ? "Check out" : "Done for today"}</button>
+        ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+        ${!canRead && html`<div className="alert warn"><b>Check-in needs the store network info.</b> Install a PC agent, or enter the store router MAC below before checking in.</div>`}
+        ${!agent && !CONFIG.USE_MOCK && html`<div className="panel"><h3>Store network</h3><${Field} label="Router MAC" hint="Format: AA:BB:CC:DD:EE:FF"><input value=${routerMac} onChange=${function (e) { var value = e.target.value; setRouterMac(value); saveStoredRouterMac(value); }} placeholder="AA:BB:CC:DD:EE:FF" /></${Field}></div>`}
+      </div>
+      <div className="stack">
+        <div className="panel"><h3>Today's shift</h3>
+          ${sched.loading && !sched.data ? html`<p className="muted">Loading…</p>` : shift ? html`<${Ticket} s=${shift}/>` : html`<p className="muted">No approved shift today.</p>`}
+        </div>
+        <div className="panel"><h3>Today's record</h3>
+          ${!rec ? html`<p className="muted">You haven't checked in yet.</p>` : html`<dl className="kv">
+            <dt>Checked in</dt><dd>${clockOf(rec.checkInTime)} ${rec.isLate ? html`<span className="badge late">Late</span>` : html`<span className="badge ontime">On time</span>`}</dd>
+            <dt>Checked out</dt><dd>${clockOf(rec.checkOutTime)}</dd>
+            <dt>Time on shift</dt><dd>${dur(rec.checkInTime, rec.checkOutTime || now.toISOString())}</dd></dl>`}
+        </div>
+        ${CONFIG.USE_MOCK && !agent && html`<div className="panel"><h3>Simulated store PC</h3>
+          <${Field} label="Network this PC is on" hint="Demo only. A real check-in reads this from the PC agent.">
+            <select value=${sim} onChange=${function (e) { setSim(e.target.value); }}>
+              <option value="ok">Store router, registered PC</option>
+              <option value="router">Unknown router</option>
+              <option value="device">Store router, someone else's PC</option>
+            </select></${Field}></div>`}
+      </div>
+    </div></section>`;
+                  }
+
+                  function WeekNav(p) {
+                        var days = range(iso(p.start), iso(addDays(p.start, 6)));
+                        return html`<div className="row"><button type="button" className="btn sm" onClick=${function () { p.onChange(addDays(p.start, -7)); }}>Previous week</button>
+    <button type="button" className="btn sm" onClick=${function () { p.onChange(startOfWeek(new Date())); }}>This week</button>
+    <button type="button" className="btn sm" onClick=${function () { p.onChange(addDays(p.start, 7)); }}>Next week</button>
+    <strong>${fmtShort(days[0])} – ${fmtDate(days[6])}</strong></div>`;
+                  }
+
+                  function MySchedulePage() {
+                        var user = useAuth().user;
+                        var ws = useState(startOfWeek(new Date())), start = ws[0], setStart = ws[1];
+                        var days = range(iso(start), iso(addDays(start, 6)));
+                        var q = useQuery(function () { return api.schedules.list({ staffId: user.id, from: days[0], to: days[6], pageSize: 100 }); }, [user.id, days[0]]);
+                        var t = today();
+                        return html`<section>
+    <${PageHeader} title="My schedule"><${WeekNav} start=${start} onChange=${setStart}/><//>
+    ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
+    <div className="week">${days.map(function (d) {
+                              var list = items(q).filter(function (s) { return s.date === d; });
+                              return html`<div key=${d} className=${cx("day", d === t && "today")}><h3>${fmtDay(d)}</h3>
+        ${list.length ? list.map(function (s) { return html`<${Ticket} key=${s.id} s=${s}/>`; }) : html`<span className="muted">${q.loading ? "" : "No shift"}</span>`}</div>`;
+                        })}</div>
+    <div style=${{ marginTop: "16px" }}><${Legend} pending=${true}/></div></section>`;
+                  }
+
+                  function MyAttendancePage() {
+                        var user = useAuth().user;
+                        var fs = useState({ from: iso(addDays(new Date(), -30)), to: today() }), f = fs[0], setF = fs[1];
+                        var pg = useState(1), page = pg[0], setPage = pg[1];
+                        var q = useQuery(function () { return api.attendance.mine({ from: f.from, to: f.to, page: page, pageSize: 12 }); }, [f.from, f.to, page]);
+                        var d = q.data || { items: [], totalCount: 0, pageSize: 12 };
+                        var cols = [
+                              { h: "Date", render: function (r) { return fmtDay(r.checkInTime); } },
+                              { h: "In", render: function (r) { return clockOf(r.checkInTime); } },
+                              { h: "Out", render: function (r) { return clockOf(r.checkOutTime); } },
+                              { h: "Worked", render: function (r) { return dur(r.checkInTime, r.checkOutTime); } },
+                              { h: "Timing", render: function (r) { return r.isLate ? html`<span className="badge late">Late</span>` : html`<span className="badge ontime">On time</span>`; } },
+                              { h: "Recorded by", render: function (r) { return r.verificationMethod === "Manual" ? html`<span className="badge plain" title=${r.notes || ""}>Manager entry</span>` : html`<span className="badge plain">Network</span>`; } }
+                        ];
+                        return html`<section><${PageHeader} title="My attendance" sub="Your check-in and check-out history."/>
+    <div className="filters">
+      <${Field} label="From"><input type="date" value=${f.from} onChange=${function (e) { setPage(1); setF({ from: e.target.value, to: f.to }); }}/></${Field}>
+      <${Field} label="To"><input type="date" value=${f.to} onChange=${function (e) { setPage(1); setF({ from: f.from, to: e.target.value }); }}/></${Field}>
+    </div>
+    ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
+    <${DataTable} cols=${cols} rows=${d.items} loading=${q.loading} page=${page} pageSize=${d.pageSize || 12} total=${d.totalCount} onPage=${setPage} emptyTitle="No attendance in this range" empty="Try a wider date range."/>
+  </section>`;
+                  }
+
+                  function RequestModal(p) {
+                        var auth = useAuth(), user = auth.user, dir = useDir(), toast = useToast();
+                        var fm = useBind({ kind: "request", type: "Exception", staffId: user.id, dateFrom: today(), dateTo: today(), reason: "" }), v = fm[0], bind = fm[2];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var people = user.role === "StoreManager" ? dir.users.filter(function (u) { return u.storeId === user.storeId; }) : [];
+                        async function submit() {
+                              if (!v.reason.trim()) { setErr("Add a reason so your approver has context."); return; }
+                              if (v.dateTo < v.dateFrom) { setErr("The end date can't be before the start date."); return; }
+                              setBusy(true); setErr("");
+                              try {
+                                    if (v.kind === "request") await api.requests.create({ staffId: v.staffId, type: v.type, dateFrom: v.dateFrom, dateTo: v.dateTo, reason: v.reason.trim() });
+                                    else await api.missions.create({ staffId: v.staffId, reason: v.reason.trim(), dateFrom: v.dateFrom, dateTo: v.dateTo });
+                                    toast(v.kind === "request" ? "Request sent" : "Mission sent", "ok"); p.onDone(v.kind);
+                              } catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
+                        }
+                        return html`<${Modal} title="New request" onClose=${p.onClose} footer=${html`<button type="button" className="btn" onClick=${p.onClose}>Cancel</button><button type="button" className="btn primary" onClick=${submit} disabled=${busy}>${busy ? "Sending…" : "Send for approval"}</button>`}>
+    <div className="grid2">
+      <${Field} label="What are you sending?"><select ...${bind("kind")}><option value="request">Request</option><option value="mission">Mission (required or official leave)</option></select></${Field}>
+      ${v.kind === "request" && html`<${Field} label="Type"><select ...${bind("type")}>${Object.keys(REQ_TYPES).map(function (k) { return html`<option key=${k} value=${k}>${REQ_TYPES[k]}</option>`; })}</select></${Field}>`}
+    </div>
+    ${people.length > 0 && html`<${Field} label="For"><select ...${bind("staffId")}>${people.map(function (u) { return html`<option key=${u.id} value=${u.id}>${u.displayName}</option>`; })}</select></${Field}>`}
+    <div className="grid2">
+      <${Field} label="From"><input type="date" ...${bind("dateFrom")}/></${Field}>
+      <${Field} label="To"><input type="date" ...${bind("dateTo")}/></${Field}>
+    </div>
+    <${Field} label="Reason"><textarea ...${bind("reason")}></textarea></${Field}>
+    ${v.kind === "request" && ["Annual", "SickLeave", "OfficialHoliday"].indexOf(v.type) >= 0 && html`<p className="muted">Once approved, these dates are added to the schedule automatically.</p>`}
+    ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+  <//>`;
+                  }
+
+                  function RequestsPage() {
+                        var user = useAuth().user, dir = useDir();
+                        var ts = useState("requests"), tab = ts[0], setTab = ts[1];
+                        var pg = useState(1), page = pg[0], setPage = pg[1];
+                        var ss = useState(""), status = ss[0], setStatus = ss[1];
+                        var os = useState(false), open = os[0], setOpen = os[1];
+                        var staffId = user.role === "Staff" ? user.id : "";
+                        var q = useQuery(function () { return (tab === "requests" ? api.requests : api.missions).list({ staffId: staffId, status: status, page: page, pageSize: 10 }); }, [tab, page, status, staffId]);
+                        var d = q.data || { items: [], totalCount: 0, pageSize: 10 };
+                        var cols = [];
+                        if (user.role !== "Staff") cols.push({ h: "Person", render: function (r) { return html`<${Person} name=${dir.userName(r.staffId)}/>`; } });
+                        if (tab === "requests") cols.push({ h: "Type", render: function (r) { return REQ_TYPES[r.type] || r.type; } });
+                        cols.push({ h: "Dates", render: function (r) { return r.dateFrom === r.dateTo ? fmtDate(r.dateFrom) : fmtShort(r.dateFrom) + " – " + fmtDate(r.dateTo); } });
+                        cols.push({ h: "Reason", render: function (r) { return r.reason; } });
+                        cols.push({ h: "Status", render: function (r) { return html`<${StatusBadge} status=${r.status}/>`; } });
+                        return html`<section><${PageHeader} title="Requests" sub="Leave, exceptions, replacements and missions that need approval."><button type="button" className="btn primary" onClick=${function () { setOpen(true); }}>New request</button><//>
+    <${Tabs} value=${tab} onChange=${function (t) { setTab(t); setPage(1); }} tabs=${[{ id: "requests", label: "Requests" }, { id: "missions", label: "Missions" }]}/>
+    <div className="filters"><${Field} label="Status"><select value=${status} onChange=${function (e) { setStatus(e.target.value); setPage(1); }}><option value="">All</option><option>Pending</option><option>Approved</option><option>Rejected</option></select></${Field}></div>
+    ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
+    <${DataTable} cols=${cols} rows=${d.items} loading=${q.loading} page=${page} pageSize=${d.pageSize || 10} total=${d.totalCount} onPage=${setPage} emptyTitle=${"No " + tab + " yet"} empty="Use New request to send one."/>
+    ${open && html`<${RequestModal} onClose=${function () { setOpen(false); }} onDone=${function (kind) { setOpen(false); setTab(kind === "request" ? "requests" : "missions"); setPage(1); q.refetch(); }}/>`}
+  </section>`;
+                  }
+
+                  /* =====================================================================
+                     MANAGER PAGES
+                     ===================================================================== */
+                  function useStoreScope() {
+                        var user = useAuth().user, dir = useDir();
+                        var stores = user.role === "Admin" ? dir.stores : user.role === "AreaManager" ? dir.stores.filter(function (s) { return s.areaManagerId === user.id; }) : dir.stores.filter(function (s) { return s.id === user.storeId; });
+                        return stores;
+                  }
+
+                  async function bulkDecide(verb, ids) {
+                        var res = await Promise.allSettled(ids.map(function (id) { return api.schedules[verb](id); }));
+                        var ok = res.filter(function (r) { return r.status === "fulfilled"; }).length;
+                        var first = res.find(function (r) { return r.status === "rejected"; });
+                        return { ok: ok, total: ids.length, error: first ? msgOf(first.reason) : null };
+                  }
+                  function bulkToast(toast, verb, r) {
+                        var past = verb === "approve" ? "Approved" : "Rejected";
+                        if (r.error) toast(past + " " + r.ok + " of " + r.total + " shifts. " + r.error, "error");
+                        else toast(past + " " + r.ok + " shift" + (r.ok === 1 ? "" : "s"), "ok");
+                  }
+
+                  function ScheduleModal(p) {
+                        var dir = useDir(), toast = useToast();
+                        var sched = p.sched, isNew = !sched, st = p.settings;
+                        var t0 = shiftTimes("AM", st);
+                        var vs = useState(sched ? { shiftType: sched.shiftType, startTime: hm(sched.startTime), endTime: hm(sched.endTime) } : { shiftType: "AM", startTime: hm(t0[0]), endTime: hm(t0[1]) }), v = vs[0], setV = vs[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var cs = useState(false), confirmEdit = cs[0], setConfirmEdit = cs[1];
+                        var ds = useState(false), confirmDel = ds[0], setConfirmDel = ds[1];
+                        var leave = isLeave(v.shiftType), ro = !p.canEdit;
+                        function pick(t) { var x = shiftTimes(t, st); setV({ shiftType: t, startTime: hm(x[0]), endTime: hm(x[1]) }); }
+                        async function run(fn, msg) { setBusy(true); setErr(""); try { await fn(); toast(msg, "ok"); p.onDone(); } catch (e) { setErr(msgOf(e)); setConfirmEdit(false); setConfirmDel(false); } finally { setBusy(false); } }
+                        function body() { return { staffId: p.staffId, date: p.date, shiftType: v.shiftType, startTime: v.startTime + ":00", endTime: v.endTime + ":00" }; }
+                        function save() {
+                              if (!leave && mins(v.endTime) <= mins(v.startTime)) { setErr("End time must be after start time."); return; }
+                              if (isNew) return run(function () { return api.schedules.create(body()); }, "Shift added, waiting for approval");
+                              if (sched.status === "Approved" && !confirmEdit) { setConfirmEdit(true); return; }
+                              return run(function () { return api.schedules.update(sched.id, body()); }, "Shift updated, waiting for approval");
+                        }
+                        var footer = html`
+    ${!isNew && p.canDelete && html`<button type="button" className="btn danger" onClick=${function () { setConfirmDel(true); }} disabled=${busy} style=${{ marginRight: "auto" }}>Delete</button>`}
+    ${!isNew && p.canReview && sched.status === "Pending" && html`<button type="button" className="btn danger" disabled=${busy} onClick=${function () { run(function () { return api.schedules.reject(sched.id); }, "Rejected"); }}>Reject</button><button type="button" className="btn" disabled=${busy} onClick=${function () { run(function () { return api.schedules.approve(sched.id); }, "Approved"); }}>Approve</button>`}
+    ${p.canEdit && html`<button type="button" className="btn primary" onClick=${save} disabled=${busy}>${isNew ? "Add shift" : "Save changes"}</button>`}`;
+                        return html`<${Modal} title=${(isNew ? "Add shift for " : "Shift for ") + dir.userName(p.staffId)} onClose=${p.onClose} footer=${footer}>
+    <div className="row"><strong>${fmtDate(p.date)}</strong>${!isNew && html`<${StatusBadge} status=${sched.status}/>`}</div>
+    ${!isNew && sched.status === "Approved" && p.canEdit && html`<p className="alert warn">This shift is approved. Editing it sends it back to the area manager for approval.</p>`}
+    ${!isNew && sched.approvedByAreaManagerId && html`<p className="muted">${sched.status === "Approved" ? "Approved" : "Reviewed"} by ${dir.userName(sched.approvedByAreaManagerId)}</p>`}
+    <${Field} label="Shift"><select value=${v.shiftType} disabled=${ro} onChange=${function (e) { pick(e.target.value); }}>${SHIFT_KEYS.map(function (k) { return html`<option key=${k} value=${k}>${SHIFTS[k].label}</option>`; })}</select></${Field}>
+    ${!leave && html`<div className="grid2">
+      <${Field} label="Starts"><input type="time" value=${v.startTime} disabled=${ro} onChange=${function (e) { setV({ shiftType: v.shiftType, startTime: e.target.value, endTime: v.endTime }); }}/></${Field}>
+      <${Field} label="Ends"><input type="time" value=${v.endTime} disabled=${ro} onChange=${function (e) { setV({ shiftType: v.shiftType, startTime: v.startTime, endTime: e.target.value }); }}/></${Field}></div>`}
+    ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+    ${confirmEdit && html`<${Confirm} title="Send back for approval?" body="Editing this approved shift will require area manager re-approval." confirmLabel="Save and resubmit" busy=${busy} onCancel=${function () { setConfirmEdit(false); }} onConfirm=${save}/>`}
+    ${confirmDel && html`<${Confirm} title="Delete this shift?" body="This removes the shift from the schedule." danger=${true} confirmLabel="Delete shift" busy=${busy} onCancel=${function () { setConfirmDel(false); }} onConfirm=${function () { run(function () { return api.schedules.remove(sched.id); }, "Shift deleted"); }}/>`}
+  <//>`;
+                  }
+
+                  function TeamSchedulePage() {
+                        var user = useAuth().user, dir = useDir();
+                        var stores = useStoreScope();
+                        var toast = useToast();
+                        var ss = useState(stores[0] && stores[0].id), storeId = ss[0], setStoreId = ss[1];
+                        var ws = useState(startOfWeek(new Date())), start = ws[0], setStart = ws[1];
+                        var ms = useState(null), modal = ms[0], setModal = ms[1];
+                        var bk = useState(null), bulkVerb = bk[0], setBulk = bk[1];
+                        var bz = useState(false), bulkBusy = bz[0], setBulkBusy = bz[1];
+                        var days = range(iso(start), iso(addDays(start, 6))), t = today();
+                        var canEdit = user.role === "StoreManager" || user.role === "Admin", canReview = user.role === "AreaManager" || user.role === "Admin";
+                        var staff = dir.users.filter(function (u) { return u.storeId === storeId && (u.role === "Staff" || u.role === "StoreManager"); });
+                        var q = useQuery(function () { return storeId ? api.schedules.list({ storeId: storeId, from: days[0], to: days[6], pageSize: 500 }) : Promise.resolve({ items: [] }); }, [storeId, days[0]]);
+                        var stq = useQuery(function () { return storeId ? api.settings.get(storeId).catch(function (e) { if (e.status === 404) return null; throw e; }) : Promise.resolve(null); }, [storeId]);
+                        var pendingIds = items(q).filter(function (s) { return s.status === "Pending"; }).map(function (s) { return s.id; });
+                        var pending = pendingIds.length;
+                        async function runBulk() { setBulkBusy(true); var r = await bulkDecide(bulkVerb, pendingIds); bulkToast(toast, bulkVerb, r); setBulkBusy(false); setBulk(null); q.refetch(); }
+                        if (!stores.length) return html`<section><${PageHeader} title="Schedules"/><${Empty} title="No stores yet" text="Stores appear here once they exist."/></section>`;
+                        return html`<section>
+    <${PageHeader} title=${canEdit ? "Team schedule" : "Schedules"} sub=${pending ? pending + " shift" + (pending > 1 ? "s" : "") + " this week waiting for approval" : "Everything this week is reviewed"}>
+      ${stores.length > 1 && html`<select aria-label="Store" style=${{ width: "auto" }} value=${storeId} onChange=${function (e) { setStoreId(e.target.value); }}>${stores.map(function (s) { return html`<option key=${s.id} value=${s.id}>${s.name}</option>`; })}</select>`}
+      <${WeekNav} start=${start} onChange=${setStart}/>
+      ${canReview && pending > 0 && html`<button type="button" className="btn danger" onClick=${function () { setBulk("reject"); }}>Reject week</button><button type="button" className="btn primary" onClick=${function () { setBulk("approve"); }}>Approve week (${pending})</button>`}<//>
+    ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
+    ${!stq.loading && !stq.data && html`<p className="alert warn" style=${{ marginBottom: "14px" }}>This store has no attendance hours yet, so shifts start from default times.</p>`}
+    <div className="scroll"><table className="rota">
+      <thead><tr><th className="who-col">Staff</th>${days.map(function (d) { return html`<th key=${d} className=${d === t ? "today" : ""}>${fmtDay(d)}</th>`; })}</tr></thead>
+      <tbody>${staff.map(function (u) {
+                              return html`<tr key=${u.id}><th className="who-col"><${Person} name=${u.displayName} sub=${ROLE_LABEL[u.role]}/></th>
+        ${days.map(function (d) {
+                                    var list = items(q).filter(function (s) { return s.staffId === u.id && s.date === d; });
+                                    return html`<td key=${d} className="cell"><div className="cell-stack">
+            ${list.map(function (s) { return html`<${Ticket} key=${s.id} s=${s} onClick=${function () { setModal({ sched: s, staffId: u.id, date: d }); }}/>`; })}
+            ${canEdit && html`<button type="button" className="add" aria-label=${"Add shift for " + u.displayName + " on " + fmtDay(d)} onClick=${function () { setModal({ staffId: u.id, date: d }); }}>+ Add</button>`}
+          </div></td>`;
+                              })}</tr>`;
+                        })}
+      </tbody></table>
+      ${!staff.length && html`<${Empty} title="No staff in this store" text="Add people from the roster first."/>`}</div>
+    <div style=${{ marginTop: "16px" }}><${Legend} pending=${true}/></div>
+    ${modal && html`<${ScheduleModal} sched=${modal.sched} staffId=${modal.staffId} date=${modal.date} settings=${stq.data} canEdit=${canEdit} canReview=${canReview} canDelete=${true} onClose=${function () { setModal(null); }} onDone=${function () { setModal(null); q.refetch(); }}/>`}
+    ${bulkVerb && html`<${Confirm} title=${(bulkVerb === "approve" ? "Approve " : "Reject ") + pending + " shift" + (pending === 1 ? "" : "s") + "?"} body=${"Every pending shift this week for " + ((stores.find(function (x) { return x.id === storeId; }) || {}).name || "this store") + " will be " + (bulkVerb === "approve" ? "approved." : "rejected.")} danger=${bulkVerb === "reject"} confirmLabel=${bulkVerb === "approve" ? "Approve all" : "Reject all"} busy=${bulkBusy} onCancel=${function () { setBulk(null); }} onConfirm=${runBulk}/>`}
+  </section>`;
+                  }
+
+                  function UserModal(p) {
+                        var auth = useAuth(), me = auth.user, dir = useDir(), toast = useToast();
+                        var u = p.user, isNew = !u;
+                        var fm = useBind({ username: u ? u.username : "", email: u ? u.email : "", password: "", displayName: u ? u.displayName : "", role: u ? u.role : "Staff", storeId: u ? (u.storeId || "") : (dir.stores[0] ? dir.stores[0].id : "") }), v = fm[0], bind = fm[2];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var roles = me.role === "Admin" ? ["Staff", "StoreManager", "AreaManager", "Admin"] : ["Staff", "StoreManager"];
+                        var needStore = v.role === "Staff" || v.role === "StoreManager";
+                        async function save() {
+                              if (!v.displayName.trim() || (isNew && (!v.username.trim() || !v.password))) { setErr("Fill in name, username and password."); return; }
+                              if (needStore && !v.storeId) { setErr("Choose a store for this role."); return; }
+                              setBusy(true); setErr("");
+                              try {
+                                    if (isNew) await api.users.create({ username: v.username.trim(), email: v.email.trim(), password: v.password, displayName: v.displayName.trim(), role: v.role, storeId: needStore ? v.storeId : null });
+                                    else await api.users.update(u.id, { displayName: v.displayName.trim(), profilePictureUrl: u.profilePictureUrl, role: v.role, storeId: needStore ? v.storeId : null });
+                                    toast(isNew ? "User added" : "User updated", "ok"); p.onDone();
+                              } catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
+                        }
+                        return html`<${Modal} title=${isNew ? "Add user" : "Edit " + u.displayName} onClose=${p.onClose} footer=${html`<button type="button" className="btn" onClick=${p.onClose}>Cancel</button><button type="button" className="btn primary" onClick=${save} disabled=${busy}>${isNew ? "Add user" : "Save changes"}</button>`}>
+    <${Field} label="Display name"><input ...${bind("displayName")}/></${Field}>
+    <div className="grid2">
+      <${Field} label="Username"><input disabled=${!isNew} ...${bind("username")}/></${Field}>
+      <${Field} label="Email"><input type="email" disabled=${!isNew} ...${bind("email")}/></${Field}>
+    </div>
+    ${isNew && html`<${Field} label="Password"><input type="password" ...${bind("password")}/></${Field}>`}
+    <div className="grid2">
+      <${Field} label="Role"><select ...${bind("role")}>${roles.map(function (r) { return html`<option key=${r} value=${r}>${ROLE_LABEL[r]}</option>`; })}</select></${Field}>
+      ${needStore && html`<${Field} label="Store"><select ...${bind("storeId")}><option value="">Choose a store</option>${dir.stores.map(function (s) { return html`<option key=${s.id} value=${s.id}>${s.name}</option>`; })}</select></${Field}>`}
+    </div>
+    ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+  <//>`;
+                  }
+
+                  function PeoplePage() {
+                        var user = useAuth().user, dir = useDir(), toast = useToast();
+                        var canManage = user.role === "Admin" || user.role === "AreaManager";
+                        var fs = useState({ storeId: user.role === "StoreManager" ? user.storeId : "", role: "" }), f = fs[0], setF = fs[1];
+                        var pg = useState(1), page = pg[0], setPage = pg[1];
+                        var es = useState(null), edit = es[0], setEdit = es[1];
+                        var ds = useState(null), del = ds[0], setDel = ds[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var q = useQuery(function () { return api.users.list({ storeId: f.storeId, role: f.role, page: page, pageSize: 12 }); }, [f.storeId, f.role, page]);
+                        var d = q.data || { items: [], totalCount: 0, pageSize: 12 };
+                        var cols = [
+                              { h: "Name", render: function (r) { return html`<${Person} name=${r.displayName} sub=${r.username}/>`; } },
+                              { h: "Email", render: function (r) { return r.email || "–"; } },
+                              { h: "Role", render: function (r) { return ROLE_LABEL[r.role] || r.role; } },
+                              { h: "Store", render: function (r) { return r.storeId ? dir.storeName(r.storeId) : "All stores"; } }
+                        ];
+                        if (canManage) cols.push({ h: "", cls: "r", render: function (r) { return html`<span className="row" style=${{ justifyContent: "flex-end" }}><button type="button" className="btn sm" onClick=${function () { setEdit(r); }}>Edit</button><button type="button" className="btn sm danger" disabled=${r.id === user.id} onClick=${function () { setDel(r); }}>Delete</button></span>`; } });
+                        async function remove() {
+                              setBusy(true);
+                              try { await api.users.remove(del.id); toast("User deleted", "ok"); setDel(null); dir.reload(); q.refetch(); } catch (e) { toast(msgOf(e), "error"); } finally { setBusy(false); }
+                        }
+                        return html`<section><${PageHeader} title=${canManage ? "People" : "Roster"} sub=${canManage ? "Everyone across your stores." : "Your store's team."}>${canManage && html`<button type="button" className="btn primary" onClick=${function () { setEdit({}); }}>Add user</button>`}<//>
+    <div className="filters">
+      ${user.role !== "StoreManager" && html`<${Field} label="Store"><select value=${f.storeId} onChange=${function (e) { setPage(1); setF({ storeId: e.target.value, role: f.role }); }}><option value="">All stores</option>${dir.stores.map(function (s) { return html`<option key=${s.id} value=${s.id}>${s.name}</option>`; })}</select></${Field}>`}
+      <${Field} label="Role"><select value=${f.role} onChange=${function (e) { setPage(1); setF({ storeId: f.storeId, role: e.target.value }); }}><option value="">All roles</option>${Object.keys(ROLE_LABEL).map(function (r) { return html`<option key=${r} value=${r}>${ROLE_LABEL[r]}</option>`; })}</select></${Field}>
+    </div>
+    ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
+    <${DataTable} cols=${cols} rows=${d.items} loading=${q.loading} page=${page} pageSize=${d.pageSize || 12} total=${d.totalCount} onPage=${setPage} emptyTitle="No people match" empty="Change the filters."/>
+    ${edit && html`<${UserModal} user=${edit.id ? edit : null} onClose=${function () { setEdit(null); }} onDone=${function () { setEdit(null); dir.reload(); q.refetch(); }}/>`}
+    ${del && html`<${Confirm} title=${"Delete " + del.displayName + "?"} body="They will no longer be able to sign in. Their past attendance stays on record." danger=${true} confirmLabel="Delete user" busy=${busy} onCancel=${function () { setDel(null); }} onConfirm=${remove}/>`}
+  </section>`;
+                  }
+
+                  function SettingsForm(p) {
+                        var toast = useToast();
+                        var q = useQuery(function () { return api.settings.get(p.storeId).catch(function (e) { if (e.status === 404) return null; throw e; }); }, [p.storeId]);
+                        var fm = useBind(null), v = fm[0], setV = fm[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var base = q.data || DEFAULT_SETTINGS;
+                        useEffect(function () { if (!q.loading && !q.error) setV({ morningStart: hm(base.morningStart), morningEnd: hm(base.morningEnd), nightStart: hm(base.nightStart), nightEnd: hm(base.nightEnd), lateGraceMinutes: base.lateGraceMinutes }); }, [q.loading, p.storeId]);
+                        if (q.error) return html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`;
+                        if (!v) return html`<p className="muted">Loading…</p>`;
+                        var set = function (k) { return { value: v[k], onChange: function (e) { var o = Object.assign({}, v); o[k] = e.target.value; setV(o); } }; };
+                        async function save() {
+                              if (mins(v.morningEnd) <= mins(v.morningStart) || mins(v.nightEnd) <= mins(v.nightStart)) { setErr("Each shift must end after it starts."); return; }
+                              var g = parseInt(v.lateGraceMinutes, 10); if (isNaN(g) || g < 0) { setErr("Grace period must be 0 or more minutes."); return; }
+                              setBusy(true); setErr("");
+                              try { await api.settings.save(p.storeId, { morningStart: v.morningStart + ":00", morningEnd: v.morningEnd + ":00", nightStart: v.nightStart + ":00", nightEnd: v.nightEnd + ":00", lateGraceMinutes: g }); toast("Attendance hours saved", "ok"); if (p.onSaved) p.onSaved(); }
+                              catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
+                        }
+                        return html`<div className="stack">
+    ${!q.data && html`<p className="alert warn">No hours saved for this store yet. These are the defaults; saving creates them.</p>`}
+    <div className="grid2"><${Field} label="Morning shift starts"><input type="time" ...${set("morningStart")}/></${Field}><${Field} label="Morning shift ends"><input type="time" ...${set("morningEnd")}/></${Field}></div>
+    <div className="grid2"><${Field} label="Night shift starts"><input type="time" ...${set("nightStart")}/></${Field}><${Field} label="Night shift ends"><input type="time" ...${set("nightEnd")}/></${Field}></div>
+    <${Field} label="Late after (minutes)" hint="Staff who check in later than this after their shift starts are marked late."><input type="number" min="0" ...${set("lateGraceMinutes")}/></${Field}>
+    ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+    <div className="row"><button type="button" className="btn primary" onClick=${save} disabled=${busy}>${busy ? "Saving…" : "Save hours"}</button></div>
+  </div>`;
+                  }
+                  function SettingsPage() {
+                        var user = useAuth().user, dir = useDir();
+                        return html`<section><${PageHeader} title="Store hours" sub=${dir.storeName(user.storeId) + ": morning and night shift times and the late grace period."}/>
+    <div className="panel" style=${{ maxWidth: "560px" }}><${SettingsForm} storeId=${user.storeId}/></div></section>`;
+                  }
+
+                  function StoreModal(p) {
+                        var me = useAuth().user, dir = useDir(), toast = useToast();
+                        var s = p.store, isNew = !s;
+                        var fm = useBind({ name: s ? s.name : "", areaManagerId: s ? (s.areaManagerId || "") : (me.role === "AreaManager" ? me.id : ""), mac: "" }), v = fm[0], setV = fm[1], bind = fm[2];
+                        var ms = useState(s ? s.routerMacs.slice() : []), macs = ms[0], setMacs = ms[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var ams = dir.users.filter(function (u) { return u.role === "AreaManager"; });
+                        function addMac() {
+                              var m = normMac(v.mac);
+                              if (!MAC_RE.test(m)) { setErr("Enter a MAC address like A4:5E:60:11:22:33."); return; }
+                              if (macs.indexOf(m) >= 0) { setErr("That router is already on the list."); return; }
+                              setErr(""); setMacs(macs.concat([m])); setV(Object.assign({}, v, { mac: "" }));
+                        }
+                        async function save() {
+                              if (!v.name.trim()) { setErr("Give the store a name."); return; }
+                              setBusy(true); setErr("");
+                              var b = { name: v.name.trim(), routerMacs: macs, areaManagerId: v.areaManagerId || null };
+                              try { if (isNew) await api.stores.create(b); else await api.stores.update(s.id, b); toast(isNew ? "Store added" : "Store updated", "ok"); p.onDone(); }
+                              catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
+                        }
+                        return html`<${Modal} wide=${true} title=${isNew ? "Add store" : "Edit " + s.name} onClose=${p.onClose} footer=${html`<button type="button" className="btn" onClick=${p.onClose}>Cancel</button><button type="button" className="btn primary" onClick=${save} disabled=${busy}>${isNew ? "Add store" : "Save changes"}</button>`}>
+    <div className="grid2">
+      <${Field} label="Store name"><input ...${bind("name")}/></${Field}>
+      ${me.role === "Admin" && html`<${Field} label="Area manager"><select ...${bind("areaManagerId")}><option value="">Not assigned</option>${ams.map(function (a) { return html`<option key=${a.id} value=${a.id}>${a.displayName}</option>`; })}</select></${Field}>`}
+    </div>
+    <${Field} label="Registered routers" hint="Staff can only check in on a network whose router is on this list.">
+      <span className="row" style=${{ flexWrap: "nowrap" }}><input placeholder="A4:5E:60:11:22:33" value=${v.mac} onChange=${bind("mac").onChange} onKeyDown=${function (e) { if (e.key === "Enter") addMac(); }}/><button type="button" className="btn" onClick=${addMac}>Add</button></span></${Field}>
+    <div className="chips">${macs.length ? macs.map(function (m) { return html`<span key=${m} className="chip">${m}<button type="button" aria-label=${"Remove " + m} onClick=${function () { setMacs(macs.filter(function (x) { return x !== m; })); }}>×</button></span>`; }) : html`<span className="muted">No routers yet.</span>`}</div>
+    ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+  <//>`;
+                  }
+
+                  function StoresPage() {
+                        var user = useAuth().user, dir = useDir(), toast = useToast();
+                        var es = useState(null), edit = es[0], setEdit = es[1];
+                        var hs = useState(null), hours = hs[0], setHours = hs[1];
+                        var ds = useState(null), del = ds[0], setDel = ds[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var stores = useStoreScope();
+                        var cols = [
+                              { h: "Store", render: function (s) { return html`<strong>${s.name}</strong>`; } },
+                              { h: "Area manager", render: function (s) { return s.areaManagerId ? dir.userName(s.areaManagerId) : "Not assigned"; } },
+                              { h: "Staff", render: function (s) { return dir.users.filter(function (u) { return u.storeId === s.id; }).length; } },
+                              { h: "Registered routers", render: function (s) { return s.routerMacs.length ? html`<span className="chips">${s.routerMacs.map(function (m) { return html`<span key=${m} className="chip">${m}</span>`; })}</span>` : html`<span className="muted">None</span>`; } },
+                              { h: "", cls: "r", render: function (s) { return html`<span className="row" style=${{ justifyContent: "flex-end" }}><button type="button" className="btn sm" onClick=${function () { setHours(s); }}>Hours</button><button type="button" className="btn sm" onClick=${function () { setEdit(s); }}>Edit</button><button type="button" className="btn sm danger" onClick=${function () { setDel(s); }}>Delete</button></span>`; } }
+                        ];
+                        async function remove() {
+                              setBusy(true);
+                              try { await api.stores.remove(del.id); toast("Store deleted", "ok"); setDel(null); dir.reload(); } catch (e) { toast(msgOf(e), "error"); } finally { setBusy(false); }
+                        }
+                        return html`<section><${PageHeader} title="Stores" sub="Registered routers decide where staff can check in."><button type="button" className="btn primary" onClick=${function () { setEdit({}); }}>Add store</button><//>
+    <${DataTable} cols=${cols} rows=${stores} emptyTitle="No stores yet" empty="Add the first store to get started."/>
+    ${edit && html`<${StoreModal} store=${edit.id ? edit : null} onClose=${function () { setEdit(null); }} onDone=${function () { setEdit(null); dir.reload(); }}/>`}
+    ${hours && html`<${Modal} title=${hours.name + ": attendance hours"} onClose=${function () { setHours(null); }}><${SettingsForm} storeId=${hours.id} onSaved=${function () { setHours(null); }}/><//>`}
+    ${del && html`<${Confirm} title=${"Delete " + del.name + "?"} body="The store is removed from the list. Its history stays on record." danger=${true} confirmLabel="Delete store" busy=${busy} onCancel=${function () { setDel(null); }} onConfirm=${remove}/>`}
+  </section>`;
+                  }
+
+                  function StoreApprovalCard(p) {
+                        var byWeek = {};
+                        p.list.forEach(function (x) { var k = iso(startOfWeek(parseISO(x.date))); (byWeek[k] = byWeek[k] || []).push(x); });
+                        var weeks = Object.keys(byWeek).sort(), t = today();
+                        var ids = function (arr) { return arr.map(function (x) { return x.id; }); };
+                        var plural = function (n, w) { return n + " " + w + (n === 1 ? "" : "s"); };
+                        return html`<div className="list store-approval">
+    <div className="store-head">
+      <div><h2>${p.name}</h2><p className="muted">${plural(p.list.length, "shift")} waiting, across ${plural(weeks.length, "week")}</p></div>
+      <span className="row">
+        <button type="button" className="btn danger" disabled=${p.busy} onClick=${function () { p.onAsk("reject", ids(p.list), p.name, "all " + plural(p.list.length, "pending shift")); }}>Reject all</button>
+        <button type="button" className="btn primary" disabled=${p.busy} onClick=${function () { p.onAsk("approve", ids(p.list), p.name, "all " + plural(p.list.length, "pending shift")); }}>Approve all ${p.list.length}</button>
+      </span>
+    </div>
+    ${weeks.map(function (wk) {
+                              var ws = byWeek[wk], days = range(wk, iso(addDays(parseISO(wk), 6))), staffIds = [];
+                              ws.forEach(function (x) { if (staffIds.indexOf(x.staffId) < 0) staffIds.push(x.staffId); });
+                              staffIds.sort(function (a, b) { return p.dir.userName(a).localeCompare(p.dir.userName(b)); });
+                              var label = "the week of " + fmtShort(wk);
+                              return html`<div key=${wk} className="week-block">
+        <div className="store-head">
+          <span><strong>Week of ${fmtDate(wk)}</strong> <span className="muted">${plural(ws.length, "shift")}</span></span>
+          <span className="row">
+            <button type="button" className="btn sm danger" disabled=${p.busy} onClick=${function () { p.onAsk("reject", ids(ws), p.name, plural(ws.length, "pending shift") + " in " + label); }}>Reject week</button>
+            <button type="button" className="btn sm primary" disabled=${p.busy} onClick=${function () { p.onAsk("approve", ids(ws), p.name, plural(ws.length, "pending shift") + " in " + label); }}>Approve week</button>
+          </span>
+        </div>
+        <div className="scroll"><table className="rota">
+          <thead><tr><th className="who-col">Staff</th>${days.map(function (d) { return html`<th key=${d} className=${d === t ? "today" : ""}>${fmtDay(d)}</th>`; })}</tr></thead>
+          <tbody>${staffIds.map(function (id) {
+                                    return html`<tr key=${id}><th className="who-col"><${Person} name=${p.dir.userName(id)}/></th>
+            ${days.map(function (d) {
+                                          var cell = ws.filter(function (x) { return x.staffId === id && x.date === d; });
+                                          return html`<td key=${d} className="cell"><div className="cell-stack">${cell.map(function (x) { return html`<${Ticket} key=${x.id} s=${x} hideStatus=${true} onClick=${function () { p.onOpen(x); }}/>`; })}</div></td>`;
+                                    })}</tr>`;
+                              })}
+          </tbody></table></div>
+      </div>`;
+                        })}
+  </div>`;
+                  }
+
+                  function ApprovalsPage() {
+                        var dir = useDir(), toast = useToast();
+                        var ts = useState("schedules"), tab = ts[0], setTab = ts[1];
+                        var bs = useState(null), busyId = bs[0], setBusyId = bs[1];
+                        var cs = useState(null), confirm = cs[0], setConfirm = cs[1];
+                        var rs = useState(null), review = rs[0], setReview = rs[1];
+                        var qs = {
+                              schedules: useQuery(function () { return api.schedules.pending({ pageSize: 500 }); }, []),
+                              requests: useQuery(function () { return api.requests.pending({ pageSize: 100 }); }, []),
+                              missions: useQuery(function () { return api.missions.pending({ pageSize: 100 }); }, [])
+                        };
+                        var cnt = function (k) { return qs[k].data ? qs[k].data.totalCount : 0; };
+                        async function decide(kind, id, verb) {
+                              setBusyId(id);
+                              try { await api[kind][verb](id); toast(verb === "approve" ? "Approved" : "Rejected", "ok"); qs[kind].refetch(); }
+                              catch (e) { toast(msgOf(e), "error"); } finally { setBusyId(null); }
+                        }
+                        function ask(verb, ids, storeName, scope) {
+                              setConfirm({ verb: verb, ids: ids, title: (verb === "approve" ? "Approve " : "Reject ") + ids.length + " shift" + (ids.length === 1 ? "" : "s") + "?", body: (verb === "approve" ? "Approve " : "Reject ") + scope + " for " + storeName + "?" });
+                        }
+                        async function runBulk() {
+                              setBusyId("bulk");
+                              var r = await bulkDecide(confirm.verb, confirm.ids);
+                              bulkToast(toast, confirm.verb, r); setConfirm(null); setBusyId(null); qs.schedules.refetch();
+                        }
+                        var list = items(qs[tab]);
+                        var groups = [];
+                        if (tab === "schedules") {
+                              var by = {};
+                              list.forEach(function (x) {
+                                    var st = (dir.users.find(function (u) { return u.id === x.staffId; }) || {}).storeId || "none";
+                                    (by[st] = by[st] || []).push(x);
+                              });
+                              groups = Object.keys(by).map(function (k) { return { id: k, name: k === "none" ? "No store" : dir.storeName(k), list: by[k] }; }).sort(function (a, b) { return a.name.localeCompare(b.name); });
+                        }
+                        var buttons = function (kind, id) { return html`<span className="row"><button type="button" className="btn danger" disabled=${busyId === id} onClick=${function () { decide(kind, id, "reject"); }}>Reject</button><button type="button" className="btn primary" disabled=${busyId === id} onClick=${function () { decide(kind, id, "approve"); }}>Approve</button></span>`; };
+                        var showList = tab !== "schedules" && list.length > 0;
+                        return html`<section><${PageHeader} title="Approvals" sub=${tab === "schedules" ? "Approve a whole store, or one week at a time. Click any shift to review it on its own." : "Everything waiting on you."}/>
+    <${Tabs} value=${tab} onChange=${setTab} tabs=${[{ id: "schedules", label: "Schedules", count: cnt("schedules") }, { id: "requests", label: "Requests", count: cnt("requests") }, { id: "missions", label: "Missions", count: cnt("missions") }]}/>
+    ${qs[tab].error && html`<${ErrorBox} error=${qs[tab].error} retry=${qs[tab].refetch}/>`}
+    ${qs[tab].loading && !qs[tab].data && html`<p className="muted">Loading…</p>`}
+    ${!qs[tab].loading && list.length === 0 && html`<div className="list"><${Empty} title="You're all caught up" text=${"No " + tab + " are waiting for approval."}/></div>`}
+    ${groups.map(function (g) { return html`<${StoreApprovalCard} key=${g.id} name=${g.name} list=${g.list} dir=${dir} busy=${busyId === "bulk"} onAsk=${ask} onOpen=${setReview}/>`; })}
+    ${showList && html`<div className="list">${list.map(function (r) {
+                              return html`<div key=${r.id} className="approval"><div className="what"><div className="row"><${Person} name=${dir.userName(r.staffId)}/>${r.type && html`<span className="badge plain">${REQ_TYPES[r.type] || r.type}</span>`}<strong>${r.dateFrom === r.dateTo ? fmtDate(r.dateFrom) : fmtShort(r.dateFrom) + " – " + fmtDate(r.dateTo)}</strong></div><p>${r.reason}</p>${r.requestedById && r.requestedById !== r.staffId && html`<small className="muted">Requested by ${dir.userName(r.requestedById)}</small>`}</div>${buttons(tab, r.id)}</div>`;
+                        })}</div>`}
+    ${confirm && html`<${Confirm} title=${confirm.title} body=${confirm.body} danger=${confirm.verb === "reject"} confirmLabel=${confirm.verb === "approve" ? "Approve" : "Reject"} busy=${busyId === "bulk"} onCancel=${function () { setConfirm(null); }} onConfirm=${runBulk}/>`}
+    ${review && html`<${ScheduleModal} sched=${review} staffId=${review.staffId} date=${review.date} settings=${null} canEdit=${false} canReview=${true} canDelete=${false} onClose=${function () { setReview(null); }} onDone=${function () { setReview(null); qs.schedules.refetch(); }}/>`}
+  </section>`;
+                  }
+
+                  function ManualModal(p) {
+                        var user = useAuth().user, dir = useDir(), toast = useToast();
+                        var people = dir.users.filter(function (u) { return (u.role === "Staff" || u.role === "StoreManager") && (!p.storeId || u.storeId === p.storeId); });
+                        var fm = useBind({ staffId: people[0] ? people[0].id : "", date: today(), checkInTime: "09:00", checkOutTime: "17:00", notes: "" }), v = fm[0], bind = fm[2];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        async function save() {
+                              if (!v.staffId) { setErr("Choose who this is for."); return; }
+                              if (v.checkOutTime && v.checkOutTime <= v.checkInTime) { setErr("Check-out must be after check-in."); return; }
+                              setBusy(true); setErr("");
+                              try { await api.attendance.manual({ staffId: v.staffId, date: v.date, checkInTime: v.checkInTime, checkOutTime: v.checkOutTime || null, notes: v.notes }); toast("Attendance entered", "ok"); p.onDone(); }
+                              catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
+                        }
+                        return html`<${Modal} title="Enter attendance" onClose=${p.onClose} footer=${html`<button type="button" className="btn" onClick=${p.onClose}>Cancel</button><button type="button" className="btn primary" onClick=${save} disabled=${busy}>Save entry</button>`}>
+    <${Field} label="Person"><select ...${bind("staffId")}>${people.map(function (u) { return html`<option key=${u.id} value=${u.id}>${u.displayName}</option>`; })}</select></${Field}>
+    <${Field} label="Date"><input type="date" ...${bind("date")}/></${Field}>
+    <div className="grid2"><${Field} label="Checked in"><input type="time" ...${bind("checkInTime")}/></${Field}><${Field} label="Checked out"><input type="time" ...${bind("checkOutTime")}/></${Field}></div>
+    <${Field} label="Note" hint="Say why this was entered by hand."><textarea ...${bind("notes")}></textarea></${Field}>
+    ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+  <//>`;
+                  }
+
+                  function TeamAttendancePage() {
+                        var user = useAuth().user, dir = useDir();
+                        var stores = useStoreScope();
+                        var fs = useState({ storeId: user.role === "StoreManager" ? user.storeId : "", staffId: "", from: iso(addDays(new Date(), -14)), to: today() }), f = fs[0], setF = fs[1];
+                        var pg = useState(1), page = pg[0], setPage = pg[1];
+                        var os = useState(false), open = os[0], setOpen = os[1];
+                        var upd = function (k, val) { var o = Object.assign({}, f); o[k] = val; if (k === "storeId") o.staffId = ""; setF(o); setPage(1); };
+                        var q = useQuery(function () { return api.attendance.list({ storeId: f.storeId, staffId: f.staffId, from: f.from, to: f.to, page: page, pageSize: 12 }); }, [f.storeId, f.staffId, f.from, f.to, page]);
+                        var d = q.data || { items: [], totalCount: 0, pageSize: 12 };
+                        var staff = dir.users.filter(function (u) { return (u.role === "Staff" || u.role === "StoreManager") && (!f.storeId || u.storeId === f.storeId); });
+                        var cols = [
+                              { h: "Person", render: function (r) { return html`<${Person} name=${dir.userName(r.staffId)}/>`; } },
+                              { h: "Date", render: function (r) { return fmtDay(r.checkInTime); } },
+                              { h: "In", render: function (r) { return clockOf(r.checkInTime); } },
+                              { h: "Out", render: function (r) { return clockOf(r.checkOutTime); } },
+                              { h: "Worked", render: function (r) { return dur(r.checkInTime, r.checkOutTime); } },
+                              { h: "Timing", render: function (r) { return r.isLate ? html`<span className="badge late">Late</span>` : html`<span className="badge ontime">On time</span>`; } },
+                              { h: "Recorded by", render: function (r) { return r.verificationMethod === "Manual" ? html`<span title=${r.notes || ""}><span className="badge plain">Manual</span> <small className="muted">${dir.userName(r.enteredManuallyBy)}</small></span>` : html`<span className="badge plain">Network</span>`; } }
+                        ];
+                        return html`<section><${PageHeader} title=${user.role === "StoreManager" ? "Team attendance" : "Attendance"} sub="Check-ins across the team, including entries made by hand.">
+      <button type="button" className="btn primary" onClick=${function () { setOpen(true); }}>Enter attendance</button><//>
+    <div className="filters">
+      ${user.role !== "StoreManager" && html`<${Field} label="Store"><select value=${f.storeId} onChange=${function (e) { upd("storeId", e.target.value); }}><option value="">All stores</option>${stores.map(function (s) { return html`<option key=${s.id} value=${s.id}>${s.name}</option>`; })}</select></${Field}>`}
+      <${Field} label="Person"><select value=${f.staffId} onChange=${function (e) { upd("staffId", e.target.value); }}><option value="">Everyone</option>${staff.map(function (u) { return html`<option key=${u.id} value=${u.id}>${u.displayName}</option>`; })}</select></${Field}>
+      <${Field} label="From"><input type="date" value=${f.from} onChange=${function (e) { upd("from", e.target.value); }}/></${Field}>
+      <${Field} label="To"><input type="date" value=${f.to} onChange=${function (e) { upd("to", e.target.value); }}/></${Field}>
+    </div>
+    ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
+    <${DataTable} cols=${cols} rows=${d.items} loading=${q.loading} page=${page} pageSize=${d.pageSize || 12} total=${d.totalCount} onPage=${setPage} emptyTitle="No attendance in this range" empty="Widen the dates or change the filters."/>
+    ${open && html`<${ManualModal} storeId=${f.storeId || (user.role === "StoreManager" ? user.storeId : "")} onClose=${function () { setOpen(false); }} onDone=${function () { setOpen(false); q.refetch(); }}/>`}
+  </section>`;
+                  }
+
+                  /* =====================================================================
+                     SHELL + LOGIN
+                     ===================================================================== */
+                  var NAV = {
+                        Staff: [["/checkin", "Check in", CheckInPage], ["/schedule", "My schedule", MySchedulePage], ["/attendance", "My attendance", MyAttendancePage], ["/requests", "Requests", RequestsPage]],
+                        StoreManager: [["/checkin", "Check in", CheckInPage], ["/schedule", "My schedule", MySchedulePage], ["/attendance", "My attendance", MyAttendancePage], ["/requests", "Requests", RequestsPage], "-", ["/team", "Team schedule", TeamSchedulePage], ["/roster", "Roster", PeoplePage], ["/team-attendance", "Team attendance", TeamAttendancePage], ["/settings", "Store hours", SettingsPage]],
+                        AreaManager: [["/approvals", "Approvals", ApprovalsPage], ["/team", "Schedules", TeamSchedulePage], ["/team-attendance", "Attendance", TeamAttendancePage], ["/people", "People", PeoplePage], ["/stores", "Stores", StoresPage]],
+                        Admin: [["/approvals", "Approvals", ApprovalsPage], ["/people", "Users", PeoplePage], ["/stores", "Stores", StoresPage], ["/team", "Schedules", TeamSchedulePage], ["/team-attendance", "Attendance", TeamAttendancePage]]
+                  };
+                  var DEMO = [{ u: "admin", label: "Admin", sub: "Users and stores" }, { u: "mira.am", label: "Area manager", sub: "Approvals" }, { u: "sm.downtown", label: "Store manager", sub: "Schedules and roster" }, { u: "layla", label: "Staff", sub: "Check in and requests" }];
+
+                  function Shell() {
+                        var auth = useAuth(), user = auth.user, dir = useDir(), r = useRouter();
+                        var os = useState(false), open = os[0], setOpen = os[1];
+                        var nav = NAV[user.role] || NAV.Staff;
+                        var links = nav.filter(function (n) { return n !== "-"; });
+                        var cur = links.find(function (n) { return n[0] === r.path; }) || links[0];
+                        var Page = cur[2];
+                        useEffect(function () { setOpen(false); window.scrollTo(0, 0); }, [cur[0]]);
+                        function theme() {
+                              var el = document.documentElement, now = el.getAttribute("data-theme");
+                              var dark = now ? now === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+                              el.setAttribute("data-theme", dark ? "light" : "dark");
+                        }
+                        return html`<div className="app">
+    <aside className=${cx("side", open && "open")}>
+      <div className="side-top"><div className="brand"><i></i>Rota</div><button type="button" className="menu-btn" aria-expanded=${open} onClick=${function () { setOpen(!open); }}>Menu</button></div>
+      <div className="collapse">
+        <div className="who"><b>${personName(user)}</b><span>${ROLE_LABEL[user.role]}${user.storeId ? ", " + dir.storeName(user.storeId) : ""}</span></div>
+        <nav className="nav" aria-label="Main">${nav.map(function (n, i) { return n === "-" ? html`<hr key=${i}/>` : html`<a key=${n[0]} href=${"#" + n[0]} aria-current=${cur[0] === n[0] ? "page" : undefined} onClick=${function (e) { e.preventDefault(); r.go(n[0]); }}>${n[1]}</a>`; })}</nav>
+        <div className="foot">
+          ${CONFIG.USE_MOCK && html`<label><small>Try another role (demo)</small><select value=${user.username} onChange=${function (e) { auth.switchTo(e.target.value); }}>${DEMO.map(function (d) { return html`<option key=${d.u} value=${d.u}>${d.label}</option>`; })}<option disabled>──────</option>${dir.users.filter(function (u) { return !DEMO.some(function (d) { return d.u === u.username; }); }).map(function (u) { return html`<option key=${u.id} value=${u.username}>${u.displayName}, ${ROLE_LABEL[u.role]}</option>`; })}</select></label>`}
+          <button type="button" className="btn sm" onClick=${theme}>Switch light or dark</button>
+          <button type="button" className="btn sm" onClick=${auth.logout}>Sign out</button>
+        </div>
+      </div>
+    </aside>
+    <main className="main" id="main"><${Page} key=${cur[0] + user.id}/></main>
+  </div>`;
+                  }
+
+                  function Login(p) {
+                        var fm = useBind({ email: "", password: "" }), v = fm[0], bind = fm[2];
+                        var es = useState(""), err = es[0], setErr = es[1];
+                        var bs = useState(false), busy = bs[0], setBusy = bs[1];
+                        async function go(u, pw) {
+                              setBusy(true); setErr("");
+                              try { await p.onLogin(u, pw); } catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
+                        }
+                        var key = function (e) { if (e.key === "Enter") go(v.email, v.password); };
+                        return html`<div className="login">
+    <div className="login-art">
+      <div className="brand" style=${{ padding: 0 }}><i></i>Rota</div>
+      <div className="stack" style=${{ gap: "22px" }}>
+        <h1>Every shift, checked and approved.</h1>
+        <div className="key">
+          <${Ticket} s=${{ shiftType: "AM", startTime: "09:00:00", endTime: "17:00:00", status: "Approved" }}/>
+          <${Ticket} s=${{ shiftType: "PM", startTime: "14:00:00", endTime: "22:00:00", status: "Pending" }}/>
+          <${Ticket} s=${{ shiftType: "ANN", startTime: "00:00:00", endTime: "00:00:00", status: "Approved" }}/>
+        </div>
+      </div>
+      <p style=${{ color: "var(--side-mute)" }}>Schedules, check-ins, requests and approvals for every store.</p>
+    </div>
+    <div className="login-form">
+      <h2 style=${{ fontSize: "1.6rem" }}>Sign in</h2>
+      <${Field} label="Email"><input type="email" autoComplete="email" onKeyDown=${key} ...${bind("email")}/></${Field}>
+      <${Field} label="Password"><input type="password" autoComplete="current-password" onKeyDown=${key} ...${bind("password")}/></${Field}>
+      ${err && html`<p className="alert bad" role="alert">${err}</p>`}
+      <button type="button" className="btn primary" disabled=${busy || !v.email || !v.password} onClick=${function () { go(v.email, v.password); }}>${busy ? "Signing in…" : "Sign in"}</button>
+      ${CONFIG.USE_MOCK ? html`<div className="stack" style=${{ gap: "10px", marginTop: "12px" }}>
+        <p className="muted">This copy runs on demo data. Pick a role to look around.</p>
+        <div className="demo-list">${DEMO.map(function (d) { return html`<button type="button" key=${d.u} className="btn" disabled=${busy} onClick=${function () { go(d.u, "demo"); }}>${d.label}<small>${d.sub}</small></button>`; })}</div></div>`
+                                    : html`<p className="muted">Connected to ${CONFIG.BASE_URL}</p>`}
+    </div>
+  </div>`;
+                  }
+
+                  function App() {
+                        var us = useState(null), user = us[0], setUser = us[1];
+                        var gs = useState(0), gen = gs[0], setGen = gs[1];
+                        var bs = useState(!CONFIG.USE_MOCK), booting = bs[0], setBooting = bs[1];
+                        useEffect(function () {
+                              session.onExpire = function () { clearSession(); setUser(null); };
+                              if (CONFIG.USE_MOCK) return;
+                              loadSession();
+                              var c = session.token ? decodeJwt(session.token) : {};
+                              if (c.id) api.users.get(c.id).then(setUser).catch(clearSession).then(function () { setBooting(false); });
+                              else setBooting(false);
+                        }, []);
+                        var value = useMemo(function () {
+                              return {
+                                    user: user,
+                                    logout: function () { clearSession(); setUser(null); setGen(function (g) { return g + 1; }); },
+                                    switchTo: function (username) { api.login(username, "demo").then(function (u) { setUser(u); setGen(function (g) { return g + 1; }); }); }
+                              };
+                        }, [user]);
+                        var login = async function (u, pw) { var x = await api.login(u, pw); setUser(x); setGen(function (g) { return g + 1; }); };
+                        if (booting) return html`<div className="boot">Loading…</div>`;
+                        return html`<${ToastProvider}><${RouterProvider}><${AuthCtx.Provider} value=${value}><${RouteReset} gen=${gen}/>
+    ${user ? html`<${DirProvider} key=${user.id}><${Shell}/><//>` : html`<${Login} onLogin=${login}/>`}
+  <//><//><//>`;
+                  }
+
+                  ReactDOM.createRoot(document.getElementById("root")).render(html`<${App}/>`);
+            })();
+      </script>
+</body>
+
+</html>

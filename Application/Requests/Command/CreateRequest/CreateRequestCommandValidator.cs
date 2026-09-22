@@ -8,7 +8,6 @@ public class CreateRequestCommandValidator : AbstractValidator<CreateRequestComm
       public CreateRequestCommandValidator()
       {
             RuleFor(x => x.StaffId).NotEmpty();
-            RuleFor(x => x.RequestedById).NotEmpty();
             RuleFor(x => x.Type).IsInEnum();
             RuleFor(x => x.Reason).NotEmpty().MaximumLength(500);
             RuleFor(x => x.DateTo).GreaterThanOrEqualTo(x => x.DateFrom)

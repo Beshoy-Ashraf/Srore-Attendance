@@ -22,13 +22,14 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, IEnumerable<U
                   return [];
 
 
-            return users.Select(u => new UserDto(
-                u.Id,
-                u.Username,
-                u.Email,
-                u.DisplayName,
-                u.ProfilePictureUrl,
-                u.Role,
-                u.StoreId));
+            return users.Where(u => u.DeleteDate == null)
+                .Select(u => new UserDto(
+                    u.Id,
+                    u.Username,
+                    u.Email,
+                    u.ProfilePictureUrl,
+                    u.DisplayName,
+                    u.Role,
+                    u.StoreId));
       }
 }

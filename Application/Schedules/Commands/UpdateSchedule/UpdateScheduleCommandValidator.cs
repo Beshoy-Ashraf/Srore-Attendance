@@ -11,7 +11,7 @@ public class UpdateScheduleCommandValidator : AbstractValidator<UpdateScheduleCo
             RuleFor(x => x.ShiftType).IsInEnum();
 
             RuleFor(x => x)
-                .Must(x => x.ShiftType is ShiftType.ANN or ShiftType.SL || x.EndTime > x.StartTime)
+                .Must(x => x.ShiftType is ShiftType.ANN or ShiftType.SL or ShiftType.OFF || x.EndTime > x.StartTime)
                 .WithMessage("EndTime must be after StartTime for working shifts.");
       }
 }

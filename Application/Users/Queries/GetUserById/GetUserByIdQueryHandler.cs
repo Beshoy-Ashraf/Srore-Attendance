@@ -19,13 +19,16 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
       {
             var user = await _unitOfWork.UserRepository.GetByIdAsync(request.Id, cancellationToken)
                 ?? throw new NotFoundException(nameof(User), request.Id);
-
+            if (user.DeleteDate != null)
+            {
+                  throw new NotFoundException(nameof(User), request.Id);
+            }
             return new UserDto(
                 user.Id,
                 user.Username,
                 user.Email,
-                user.DisplayName,
                 user.ProfilePictureUrl,
+                user.DisplayName,
                 user.Role,
                 user.StoreId);
       }

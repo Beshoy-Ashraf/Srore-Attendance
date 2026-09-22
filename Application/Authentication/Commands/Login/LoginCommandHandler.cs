@@ -20,6 +20,9 @@ public class LoginCommandHandler(IUnitOfWork context, ITokenService tokenService
             if (!hasher.Verify(request.Password, user.PasswordHash))
                   throw new UnauthorizedException("Invalid credentials");
 
+            if (user.DeleteDate != null)
+                  throw new UnauthorizedException("User account is deleted");
+
             var (accessToken, expiresAt) = tokenService.GenerateAccessToken(user);
             var refreshToken = tokenService.GenerateRefreshToken();
 

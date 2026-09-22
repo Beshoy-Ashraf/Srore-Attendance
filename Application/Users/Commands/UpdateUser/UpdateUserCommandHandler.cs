@@ -18,7 +18,7 @@ public class UpdateUserCommandHandler : IRequestHandler<UpdateUserCommand>
       {
             var user = await _unitOfWork.UserRepository.GetUserByUserId(request.Id, cancellationToken)
                 ?? throw new NotFoundException(nameof(User), request.Id);
-
+            
             user.DisplayName = request.DisplayName;
             user.ProfilePictureUrl = request.ProfilePictureUrl?.ToString() ?? string.Empty;
             user.Role = request.Role;

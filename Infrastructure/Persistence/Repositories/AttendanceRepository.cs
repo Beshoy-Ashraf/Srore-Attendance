@@ -37,7 +37,8 @@ public class AttendanceRepository(AppDbContext context) : BaseRepository<Attenda
                 .ToListAsync();
       }
       public async Task<IEnumerable<Attendance>> GetFilteredAsync(
-        Guid? staffId, Guid? storeId, DateOnly? from, DateOnly? to, int page, int pageSize)
+        Guid? staffId, Guid? storeId, DateTime? from,
+    DateTime? to, int page, int pageSize)
       {
             var query = _context.Set<Attendance>().Include(a => a.Staff).AsQueryable();
 
@@ -49,14 +50,14 @@ public class AttendanceRepository(AppDbContext context) : BaseRepository<Attenda
 
             if (from.HasValue)
             {
-                  var fromDate = from.Value.ToDateTime(TimeOnly.MinValue);
-                  query = query.Where(a => a.CheckInTime >= fromDate);
+                  var utcFrom = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
+                  query = query.Where(a => a.CreatedDate >= utcFrom);
             }
 
             if (to.HasValue)
             {
-                  var toDate = to.Value.ToDateTime(TimeOnly.MaxValue);
-                  query = query.Where(a => a.CheckInTime <= toDate);
+                  var utcTo = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
+                  query = query.Where(a => a.CreatedDate <= utcTo);
             }
 
             return await query

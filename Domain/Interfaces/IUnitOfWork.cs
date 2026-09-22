@@ -14,5 +14,6 @@ public interface IUnitOfWork : IDisposable
       IDeviceRepository DeviceRepository { get; }
       IAttendanceSettingsRepository AttendanceSettingsRepository { get; }
 
+
       Task<int> Complete(CancellationToken cancellationToken);
 }

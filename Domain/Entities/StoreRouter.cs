@@ -11,5 +11,5 @@ public class StoreRouter
       public DateTime CreatedDate { get; set; }
 
       // Navigation
-      public Store Store { get; set; } = default!;
+      public Store? Store { get; set; }
 }
