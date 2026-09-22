@@ -13,3 +13,5 @@ public record UpdateScheduleRequest(
     ShiftType ShiftType,
     TimeOnly StartTime,
     TimeOnly EndTime);
+
+public record RejectScheduleRequest(string Reason);

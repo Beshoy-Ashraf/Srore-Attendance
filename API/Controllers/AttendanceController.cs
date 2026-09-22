@@ -26,7 +26,7 @@ public class AttendanceController(ISender mediator) : ControllerBase
       [HttpPost("check-in")]
       public async Task<ActionResult<CheckInResponseDto>> CheckIn(CheckInRequest request, CancellationToken cancellationToken)
       {
-            var command = new CheckInCommand(CurrentUserId, request.RouterMac, request.DeviceMac, request.DeviceIp);
+            var command = new CheckInCommand(CurrentUserId, request.RouterMac, request.DeviceMac);
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(result);
       }
@@ -62,8 +62,8 @@ public class AttendanceController(ISender mediator) : ControllerBase
       public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetAll(
           [FromQuery] Guid? staffId,
           [FromQuery] Guid? storeId,
-          [FromQuery] DateOnly? from,
-          [FromQuery] DateOnly? to,
+          [FromQuery] DateTime? from,
+          [FromQuery] DateTime? to,
           [FromQuery] int page = 1,
           [FromQuery] int pageSize = 20,
           CancellationToken cancellationToken = default)
@@ -75,8 +75,8 @@ public class AttendanceController(ISender mediator) : ControllerBase
 
       [HttpGet("me")]
       public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetMine(
-          [FromQuery] DateOnly? from,
-          [FromQuery] DateOnly? to,
+          [FromQuery] DateTime? from,
+          [FromQuery] DateTime? to,
           [FromQuery] int page = 1,
           [FromQuery] int pageSize = 20,
           CancellationToken cancellationToken = default)

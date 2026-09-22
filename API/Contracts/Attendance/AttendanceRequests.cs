@@ -1,6 +1,6 @@
 namespace API.Contracts.Attendance;
 
-public record CheckInRequest(string RouterMac, string DeviceMac, string DeviceIp);
+public record CheckInRequest(string RouterMac, string DeviceMac);
 
 public record CheckOutRequest(string RouterMac, string DeviceMac);
 
