@@ -1,78 +1,164 @@
-# Clean Architecture Template — .NET 10
+# StoreAttendance
 
-A starter solution for building APIs with Clean Architecture on .NET 10. Repository + Unit of Work for persistence, MediatR for the application layer, JWT for auth, PostgreSQL via EF Core.
+StoreAttendance is a .NET 10 clean-architecture API for retail staff attendance and store operations management. It supports attendance tracking, schedule approvals, mission workflows, store configuration, user management, and secure authentication.
 
-## Stack
+## Overview
 
-- **.NET 10**
-- **PostgreSQL** (Npgsql.EntityFrameworkCore.PostgreSQL)
-- **MediatR** — Commands/Queries + Handlers instead of a services layer
-- **JWT Bearer** — access + refresh tokens, with rotation on refresh
-- **FluentValidation** — request validation via a MediatR pipeline behavior
+This solution is organized into the following projects:
+
+- API: ASP.NET Core Web API, authentication, Swagger, controllers, and middleware
+- Application: CQRS command/query handlers, DTOs, validation, and business logic
+- Domain: entities, enums, repository contracts, and core exceptions
+- Infrastructure: EF Core persistence, repositories, auth services, and database initialization
+
+## Tech stack
+
+- .NET 10
+- ASP.NET Core Web API
+- Entity Framework Core
+- PostgreSQL
+- JWT authentication
+- MediatR
+- FluentValidation
+- Swagger / OpenAPI
+
+## Main features
+
+- User authentication and JWT refresh-token flow
+- Store management
+- Staff and device tracking
+- Attendance check-in/check-out logic
+- Attendance settings per store
+- Schedule creation and approval workflows
+- Request and mission handling
+- Role-based access control and scoped queries
 
 ## Project structure
 
-```
-src/
-├── Domain/           # Entities, exceptions, repository interfaces — no external dependencies
-├── Application/       # Commands, Queries, Handlers, DTOs, MediatR pipeline behaviors
-├── Infrastructure/    # EF Core, AppDbContext, repositories, JWT token service, password hashing
-└── API/                # Controllers, middleware, Program.cs
+```text
+StoreAttendance/
+├── API/
+│   ├── Controllers/
+│   ├── Contracts/
+│   ├── Auth/
+│   ├── Middlewares/
+│   ├── Program.cs
+│   └── appsettings*.json
+├── Application/
+│   ├── Attendance/
+│   ├── Authentication/
+│   ├── Devices/
+│   ├── Missions/
+│   ├── Requests/
+│   ├── Schedules/
+│   ├── Stores/
+│   ├── Users/
+│   └── Common/
+├── Domain/
+│   ├── Entities/
+│   ├── Enums/
+│   ├── Exceptions/
+│   ├── Interfaces/
+│   └── Models/
+├── Infrastructure/
+│   ├── Identity/
+│   ├── Persistence/
+│   ├── Services/
+│   └── DependencyInjection.cs
+├── Directory.Build.props
+├── Directory.Packages.props
+├── Csproj.slnx
+├── README.md
+└── .gitignore
 ```
 
-Dependency direction: `API → Application → Domain`, `Infrastructure → Application + Domain`. Domain has no references out; Infrastructure implements the interfaces Domain and Application define.
+## Prerequisites
+
+Before running the project, make sure you have:
+
+- .NET 10 SDK
+- PostgreSQL server running locally or in a reachable environment
+- A database user with access to the configured database
+
+## Configuration
+
+The application reads its settings from the API project configuration files, mainly:
+
+- API/appsettings.json
+- API/appsettings.Development.json
+
+Important settings include:
+
+- ConnectionStrings:DefaultConnection
+- JwtSettings:SecretKey, Issuer, Audience
+- Attendance:TimeZoneId
+- Seed:AdminEmail, AdminPassword, AdminUsername
+- Cors:AllowedOrigins
+
+For local development, you can use user secrets instead of storing sensitive values in source-controlled config files.
 
 ## Getting started
 
-### Prerequisites
+1. Restore dependencies:
 
-- .NET 10 SDK
-- PostgreSQL running locally
-- `dotnet-ef` CLI: `dotnet tool install --global dotnet-ef`
+```bash
+dotnet restore
+```
 
-### Setup
+2. Update the database connection string and JWT settings in the appsettings file or user secrets.
 
-1. Clone the repo and restore:
-   ```bash
-   git clone https://github.com/Beshoy-Ashraf/clean-architecture-tempate.git
-   cd clean-architecture-tempate
-   dotnet restore
-   ```
+3. Apply migrations and create the database:
 
-2. Set your connection string and JWT secret with user-secrets (don't put real values in `appsettings.json`):
-   ```bash
-   cd API
-   dotnet user-secrets init
-   dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=yourdb;Username=postgres;Password=yourpassword"
-   dotnet user-secrets set "JwtSettings:SecretKey" "a-long-random-secret-at-least-32-characters"
-   ```
+```bash
+dotnet ef database update --project Infrastructure/Infrastructure.csproj --startup-project API/API.csproj
+```
 
-3. Create the database and apply migrations:
-   ```bash
-   dotnet ef database update -p Infrastructure/Infrastructure.csproj -s API/API.csproj
-   ```
+If `dotnet-ef` is not installed yet:
+
+```bash
+dotnet tool install --global dotnet-ef
+```
 
 4. Run the API:
-   ```bash
-   dotnet run --project API
-   ```
 
-Swagger is served at the root URL in development.
+```bash
+dotnet run --project API/API.csproj
+```
 
-## Auth flow
+5. Open the Swagger UI in the browser at the root URL while the app is running.
 
-- `POST /api/auth/register` — creates a user, returns an access + refresh token pair
-- `POST /api/auth/login` — validates credentials, returns a new token pair
-- `POST /api/auth/refresh` — takes an expired access token + a valid refresh token, returns a new pair (old refresh token is revoked)
+## Authentication
 
-Access tokens are short-lived (15 min default); refresh tokens are longer-lived (7 days default) and rotate on every use.
+The API uses JWT bearer authentication with refresh tokens. The main authentication endpoints are:
 
-## Architecture notes
+- POST /api/auth/login
+- POST /api/auth/refresh
+- POST /api/auth/logout
 
-- Persistence goes through `IUnitOfWork` / `IUserRepository` only — nothing in Application ever touches `AppDbContext` or EF Core types directly.
-- Domain exceptions (`NotFoundException`, `UnauthorizedException`, `ConflictException`, `ValidationException`) are mapped to HTTP status codes by a global exception middleware in `API/Middlewares`.
-- Password hashing uses PBKDF2-SHA512 with a random salt per user, not a third-party identity package.
+Protected endpoints require a valid Bearer token in the Authorization header.
+
+## API modules
+
+The API exposes domain-focused modules such as:
+
+- Attendance
+- AttendanceSettings
+- Auth
+- Devices
+- Missions
+- Requests
+- Schedules
+- Stores
+- Users
+
+These modules are organized by feature and follow the CQRS pattern in the Application layer.
+
+## Notes
+
+- The solution uses a clean architecture structure to keep business rules away from the web layer.
+- Database initialization is handled through infrastructure services, and the app runs startup initialization automatically.
+- Exception handling middleware centralizes HTTP-friendly error responses.
 
 ## License
 
-Add a license before making this public, if you haven't already.
+This project does not currently include a license file. Add one before publishing or sharing the repository publicly.
