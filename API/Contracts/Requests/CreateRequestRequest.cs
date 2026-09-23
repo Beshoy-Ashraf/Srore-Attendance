@@ -8,3 +8,4 @@ public record CreateRequestRequest(
     DateOnly DateFrom,
     DateOnly DateTo,
     string Reason);
+public record RejectRequestRequest(string Reason);

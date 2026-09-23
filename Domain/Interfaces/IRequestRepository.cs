@@ -1,13 +1,18 @@
 using Domain.Entities;
 using Domain.Enums;
+using Domain.Models;
 
 namespace Domain.Interfaces;
 
 public interface IRequestRepository : IBaseRepository<Request>
 {
-      Task<IEnumerable<Request>> GetPendingByAreaManagerAsync(Guid areaManagerId);
-      Task<IEnumerable<Request>> GetByStaffAsync(Guid staffId);
+    Task<Request?> GetDetailedByIdAsync(Guid id, CancellationToken cancellationToken);
 
-      Task<IEnumerable<Request>> GetFilteredAsync(
-          Guid? staffId, RequestType? type, RequestStatus? status, int page, int pageSize);
+    Task<Request?> GetDetailedByIdAsync(Guid id, bool includeDeleted, CancellationToken cancellationToken);
+
+    Task<PagedList<Request>> GetPagedAsync(RequestFilter filter, CancellationToken cancellationToken);
+
+    /// <summary>True when the staff member already has a pending/approved request of this type touching the range.</summary>
+    Task<bool> HasOverlapAsync(
+        Guid staffId, RequestType type, DateOnly from, DateOnly to, Guid? excludeId, CancellationToken cancellationToken);
 }

@@ -18,7 +18,12 @@ where TRequest : notnull
 
                   if (failures.Count != 0)
                   {
-                        throw new ValidationException(failures);
+                        // Domain exception (not FluentValidation's) so the API maps it to a 400 with a field -> messages map.
+                        var errors = failures
+                              .GroupBy(f => string.IsNullOrWhiteSpace(f.PropertyName) ? "request" : f.PropertyName)
+                              .ToDictionary(g => g.Key, g => g.Select(f => f.ErrorMessage).Distinct().ToArray());
+
+                        throw new Domain.Exceptions.ValidationException(errors);
                   }
             }
 

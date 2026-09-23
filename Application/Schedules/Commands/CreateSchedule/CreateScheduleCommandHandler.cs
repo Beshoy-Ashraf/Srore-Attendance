@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Exceptions;
@@ -6,18 +7,19 @@ using MediatR;
 
 namespace Application.Schedules.Commands.CreateSchedule;
 
-public class CreateScheduleCommandHandler : IRequestHandler<CreateScheduleCommand, Guid>
+public class CreateScheduleCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<CreateScheduleCommand, Guid>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public CreateScheduleCommandHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<Guid> Handle(CreateScheduleCommand request, CancellationToken cancellationToken)
       {
-            var existing = await _unitOfWork.ScheduleRepository.GetByStaffAndDateAsync(request.StaffId, request.Date);
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.StoreManager);
+            var me = await access.GetCurrentUserAsync(cancellationToken);
+            var staff = await access.EnsureStaffAccessAsync(request.StaffId, cancellationToken);
+
+            if (staff.StoreId is null)
+                  throw new BadRequestException("This staff member isn't assigned to a store.");
+
+            var existing = await unitOfWork.ScheduleRepository.GetByStaffAndDateAsync(request.StaffId, request.Date);
             if (existing is not null)
                   throw new ConflictException("This staff member already has a schedule for that date.");
 
@@ -30,12 +32,12 @@ public class CreateScheduleCommandHandler : IRequestHandler<CreateScheduleComman
                   StartTime = request.StartTime,
                   EndTime = request.EndTime,
                   Status = ScheduleStatus.Pending,
-                  CreatedByStoreManagerId = request.CreatedByStoreManagerId,
-                  CreatedDate = DateTime.UtcNow
+                  CreatedByStoreManagerId = me.Id,
+                  CreatedDate = clock.UtcNow
             };
 
-            await _unitOfWork.ScheduleRepository.AddAsync(schedule, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.ScheduleRepository.AddAsync(schedule, cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
 
             return schedule.Id;
       }

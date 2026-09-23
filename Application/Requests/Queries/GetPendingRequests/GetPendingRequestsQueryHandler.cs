@@ -1,32 +1,32 @@
+using Application.Common.Interfaces;
+using Application.Common.Models;
 using Application.Requests.Dtos;
+using Domain.Enums;
 using Domain.Interfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Requests.Queries.GetPendingRequests;
 
-public class GetPendingRequestsQueryHandler : IRequestHandler<GetPendingRequestsQuery, IEnumerable<RequestDto>>
+public class GetPendingRequestsQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetPendingRequestsQuery, PagedResult<RequestDto>>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetPendingRequestsQueryHandler(IUnitOfWork unitOfWork)
+      public async Task<PagedResult<RequestDto>> Handle(GetPendingRequestsQuery request, CancellationToken cancellationToken)
       {
-            _unitOfWork = unitOfWork;
-      }
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.AreaManager);
+            var (page, pageSize) = Paging.Normalize(request.Page, request.PageSize);
 
-      public async Task<IEnumerable<RequestDto>> Handle(GetPendingRequestsQuery request, CancellationToken cancellationToken)
-      {
-            var requests = await _unitOfWork.RequestRepository.GetPendingByAreaManagerAsync(request.AreaManagerId);
+            var storeIds = await access.ResolveStoreScopeAsync(request.StoreId, cancellationToken);
 
-            return requests.Select(r => new RequestDto(
-                r.Id,
-                r.StaffId,
-                r.Type,
-                r.DateFrom,
-                r.DateTo,
-                r.Reason,
-                r.Status,
-                r.RequestedById,
-                r.ApprovedByAreaManagerId,
-                r.ApprovedDate));
+            var filter = new RequestFilter
+            {
+                  StoreIds = storeIds,
+                  Status = RequestStatus.Pending,
+                  Page = page,
+                  PageSize = pageSize
+            };
+
+            var result = await unitOfWork.RequestRepository.GetPagedAsync(filter, cancellationToken);
+            return PagedResult<RequestDto>.From(result, r => r.ToDto(), page, pageSize);
       }
 }

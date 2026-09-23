@@ -1,3 +1,4 @@
+using Application.Common.Models;
 using Application.Stores.Commands.CreateStore;
 using Application.Stores.Commands.DeleteStore;
 using Application.Stores.Commands.UpdateStore;
@@ -25,7 +26,7 @@ public class StoresController(ISender mediator) : ControllerBase
       }
 
       [HttpGet]
-      public async Task<ActionResult<IEnumerable<StoreDto>>> GetAll(
+      public async Task<ActionResult<PagedResult<StoreDto>>> GetAll(
           [FromQuery] Guid? areaManagerId,
           [FromQuery] int page = 1,
           [FromQuery] int pageSize = 20,

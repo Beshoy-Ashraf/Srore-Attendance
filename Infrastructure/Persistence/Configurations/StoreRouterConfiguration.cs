@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
 
-public class StoreRouterConfiguration : IEntityTypeConfiguration<StoreRouter>
+public class StoreDeviceConfiguration : IEntityTypeConfiguration<StoreDevice>
 {
-      public void Configure(EntityTypeBuilder<StoreRouter> builder)
+      public void Configure(EntityTypeBuilder<StoreDevice> builder)
       {
-            builder.ToTable("StoreRouters");
+            builder.ToTable("StoreDevices");
             builder.HasKey(r => r.Id);
 
             builder.Property(r => r.MacAddress).IsRequired().HasMaxLength(17);

@@ -14,6 +14,9 @@ public class RequestConfiguration : IEntityTypeConfiguration<Request>
             builder.Property(r => r.Type).HasConversion<string>().HasMaxLength(20);
             builder.Property(r => r.Status).HasConversion<string>().HasMaxLength(20);
             builder.Property(r => r.Reason).HasMaxLength(500);
+            builder.Property(r => r.RejectionReason).HasMaxLength(500);
+
+            builder.HasQueryFilter(r => r.DeletedDate == null);
 
             builder.HasOne(r => r.Staff)
                 .WithMany()

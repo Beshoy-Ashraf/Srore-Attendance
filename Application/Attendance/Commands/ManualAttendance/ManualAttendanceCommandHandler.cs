@@ -1,42 +1,45 @@
+using Application.Common;
+using Application.Common.Interfaces;
+using Domain.Entities;
 using Domain.Enums;
-using Domain.Exceptions;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Attendance.Commands.ManualAttendance;
 
-public class ManualAttendanceCommandHandler : IRequestHandler<ManualAttendanceCommand, Guid>
+public class ManualAttendanceCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<ManualAttendanceCommand, Guid>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public ManualAttendanceCommandHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<Guid> Handle(ManualAttendanceCommand request, CancellationToken cancellationToken)
       {
-            var staff = await _unitOfWork.UserRepository.GetByIdAsync(request.StaffId, cancellationToken)
-                ?? throw new NotFoundException(nameof(Domain.Entities.User), request.StaffId);
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.AreaManager, UserRole.StoreManager);
+            var me = await access.GetCurrentUserAsync(cancellationToken);
 
-            var schedule = await _unitOfWork.ScheduleRepository.GetByStaffAndDateAsync(request.StaffId, request.Date);
+            // Staff must be in the caller's own store(s) — a Store Manager can't enter attendance for another store.
+            await access.EnsureStaffAccessAsync(request.StaffId, cancellationToken);
 
+            var schedule = await unitOfWork.ScheduleRepository.GetByStaffAndDateAsync(request.StaffId, request.Date);
 
-            var existing = (await _unitOfWork.AttendanceRepository.GetByStaffAndDateRangeAsync(
-                    request.StaffId, request.Date, request.Date))
+            var dayStartUtc = clock.LocalToUtc(request.Date, TimeOnly.MinValue);
+            var dayEndUtc = clock.LocalToUtc(request.Date.AddDays(1), TimeOnly.MinValue);
+            var existing = (await unitOfWork.AttendanceRepository.GetInRangeAsync(
+                    new[] { request.StaffId }, dayStartUtc, dayEndUtc, cancellationToken))
                 .FirstOrDefault();
 
             var checkInDateTime = request.CheckInTime is not null
-                ? request.Date.ToDateTime(request.CheckInTime.Value, DateTimeKind.Utc)
+                ? clock.LocalToUtc(request.Date, request.CheckInTime.Value)
                 : existing?.CheckInTime;
 
             var checkOutDateTime = request.CheckOutTime is not null
-                ? request.Date.ToDateTime(request.CheckOutTime.Value, DateTimeKind.Utc)
+                ? clock.LocalToUtc(request.Date, request.CheckOutTime.Value)
                 : existing?.CheckOutTime;
 
             var isLate = schedule is not null
+                && AttendanceRules.IsWorkingShift(schedule.ShiftType)
                 && request.CheckInTime is not null
                 && request.CheckInTime.Value > schedule.StartTime;
+
+            var now = clock.UtcNow;
 
             if (existing is not null)
             {
@@ -44,12 +47,11 @@ public class ManualAttendanceCommandHandler : IRequestHandler<ManualAttendanceCo
                   existing.CheckOutTime = checkOutDateTime;
                   existing.VerificationMethod = VerificationMethod.Manual;
                   existing.IsLate = isLate;
-                  existing.EnteredManuallyBy = request.EnteredManuallyBy;
+                  existing.EnteredManuallyBy = me.Id;
                   existing.Notes = request.Notes;
-                  existing.UpdateDate = DateTime.UtcNow;
+                  existing.UpdateDate = now;
 
-                  await _unitOfWork.AttendanceRepository.UpdateAsync(existing, cancellationToken);
-                  await _unitOfWork.Complete(cancellationToken);
+                  await unitOfWork.Complete(cancellationToken);
 
                   return existing.Id;
             }
@@ -63,13 +65,13 @@ public class ManualAttendanceCommandHandler : IRequestHandler<ManualAttendanceCo
                   CheckOutTime = checkOutDateTime,
                   VerificationMethod = VerificationMethod.Manual,
                   IsLate = isLate,
-                  EnteredManuallyBy = request.EnteredManuallyBy,
+                  EnteredManuallyBy = me.Id,
                   Notes = request.Notes,
-                  CreatedDate = DateTime.UtcNow
+                  CreatedDate = now
             };
 
-            await _unitOfWork.AttendanceRepository.AddAsync(attendance, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.AttendanceRepository.AddAsync(attendance, cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
 
             return attendance.Id;
       }

@@ -1,3 +1,4 @@
+using Application.Common.Models;
 using Application.Schedules.Dtos;
 using Domain.Enums;
 using MediatR;
@@ -11,4 +12,4 @@ public record GetSchedulesQuery(
     DateOnly? To,
     ScheduleStatus? Status,
     int Page = 1,
-    int PageSize = 20) : IRequest<IEnumerable<ScheduleDto>>;
+    int PageSize = 20) : IRequest<PagedResult<ScheduleDto>>;

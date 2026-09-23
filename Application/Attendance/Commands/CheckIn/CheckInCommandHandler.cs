@@ -1,3 +1,5 @@
+using Application.Common;
+using Application.Common.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Exceptions;
@@ -6,28 +8,26 @@ using MediatR;
 
 namespace Application.Attendance.Commands.CheckIn;
 
-public class CheckInCommandHandler : IRequestHandler<CheckInCommand, CheckInResponseDto>
+public class CheckInCommandHandler(IUnitOfWork unitOfWork, IClock clock) : IRequestHandler<CheckInCommand, CheckInResponseDto>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public CheckInCommandHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<CheckInResponseDto> Handle(CheckInCommand request, CancellationToken cancellationToken)
       {
-            var staff = await _unitOfWork.UserRepository.GetByIdAsync(request.StaffId, cancellationToken)
+            if (!MacAddress.IsValid(request.DeviceMac) || !MacAddress.IsValid(request.DeviceMac))
+                  throw new BadRequestException("A valid device and device MAC address are required.");
+
+            var normalizedDeviceMac = MacAddress.Normalize(request.DeviceMac);
+
+            var staff = await unitOfWork.UserRepository.GetActiveByIdAsync(request.StaffId, cancellationToken)
                 ?? throw new NotFoundException(nameof(User), request.StaffId);
 
             if (staff.StoreId is null)
                   throw new BadRequestException("Staff member is not assigned to a store.");
 
-            var routerIsValid = await _unitOfWork.StoreRepository.HasRouterMacAsync(staff.StoreId.Value, request.RouterMac);
-            if (!routerIsValid)
-                  throw new BadRequestException("This router isn't registered to your store.");
+            var deviceIsValid = await unitOfWork.StoreRepository.HasDeviceMacAsync(staff.StoreId.Value, normalizedDeviceMac);
+            if (!deviceIsValid)
+                  throw new BadRequestException("This device isn't registered to your store.");
 
-            var device = await _unitOfWork.DeviceRepository.GetByStaffIdAsync(request.StaffId);
+            var device = await unitOfWork.DeviceRepository.GetByStaffIdAsync(request.StaffId);
 
             if (device is null)
             {
@@ -35,30 +35,25 @@ public class CheckInCommandHandler : IRequestHandler<CheckInCommand, CheckInResp
                   {
                         Id = Guid.NewGuid(),
                         StaffId = request.StaffId,
-                        RegisteredDeviceMac = request.DeviceMac,
-                        RegisteredDate = DateTime.UtcNow,
+                        RegisteredDeviceMac = normalizedDeviceMac,
+                        RegisteredDate = clock.UtcNow,
                         IsActive = true
                   };
-                  await _unitOfWork.DeviceRepository.AddAsync(device, cancellationToken);
+                  await unitOfWork.DeviceRepository.AddAsync(device, cancellationToken);
             }
-            else
+            else if (!device.IsActive || device.RegisteredDeviceMac != normalizedDeviceMac)
             {
-                  var macMatches = device.IsActive && device.RegisteredDeviceMac == request.DeviceMac;
-
-                  if (!macMatches)
-                  {
-                        throw new BadRequestException(
-                            "This PC isn't the one registered to your account. Ask your Store Manager to reset your registered device.");
-                  }
-
-
+                  throw new BadRequestException(
+                      "This PC isn't the one registered to your account. Ask your Store Manager to reset your registered device.");
             }
 
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-            var schedule = await _unitOfWork.ScheduleRepository.GetByStaffAndDateAsync(request.StaffId, today);
+            var today = clock.LocalToday;
+            var schedule = await unitOfWork.ScheduleRepository.GetByStaffAndDateAsync(request.StaffId, today);
+            var settings = await unitOfWork.AttendanceSettingsRepository.GetByStoreIdAsync(staff.StoreId.Value);
 
-            var checkInTime = DateTime.UtcNow;
-            var isLate = schedule is not null && TimeOnly.FromDateTime(checkInTime) > schedule.StartTime;
+            var checkInTime = clock.UtcNow;
+            var isLate = schedule is not null && AttendanceRules.IsWorkingShift(schedule.ShiftType)
+                && AttendanceRules.IsLate(clock.ToLocalTime(checkInTime), schedule.StartTime, settings?.LateGraceMinutes ?? 0);
 
             var attendance = new Domain.Entities.Attendance
             {
@@ -66,16 +61,15 @@ public class CheckInCommandHandler : IRequestHandler<CheckInCommand, CheckInResp
                   StaffId = request.StaffId,
                   ScheduleId = schedule?.Id,
                   CheckInTime = checkInTime,
-                  CheckInRouterMac = request.RouterMac,
-                  CheckInDeviceMac = request.DeviceMac,
+                  CheckInDeviceMac = normalizedDeviceMac,
                   VerificationMethod = VerificationMethod.Network,
                   IsLate = isLate,
                   IsDeviceMismatch = false,
-                  CreatedDate = DateTime.UtcNow
+                  CreatedDate = checkInTime
             };
 
-            await _unitOfWork.AttendanceRepository.AddAsync(attendance, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.AttendanceRepository.AddAsync(attendance, cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
 
             return new CheckInResponseDto(
                 attendance.Id,

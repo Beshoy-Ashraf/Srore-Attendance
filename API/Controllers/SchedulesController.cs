@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using API.Contracts.Schedules;
+using Application.Common.Models;
 using Application.Schedules.Commands.ApproveSchedule;
 using Application.Schedules.Commands.CreateSchedule;
 using Application.Schedules.Commands.DeleteSchedule;
@@ -7,6 +7,7 @@ using Application.Schedules.Commands.RejectSchedule;
 using Application.Schedules.Commands.UpdateSchedule;
 using Application.Schedules.Dtos;
 using Application.Schedules.Queries.GetPendingSchedules;
+using Application.Schedules.Queries.GetScheduleApprovalAlerts;
 using Application.Schedules.Queries.GetScheduleById;
 using Application.Schedules.Queries.GetSchedules;
 using Domain.Enums;
@@ -23,19 +24,13 @@ public class SchedulesController(ISender mediator) : ControllerBase
 {
       private readonly ISender _mediator = mediator;
 
-      // CreatedByStoreManagerId / ApprovedByAreaManagerId always come from the token,
-      // never from the request body — otherwise anyone could submit or approve as someone else.
-      private Guid CurrentUserId =>
-            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new UnauthorizedAccessException("No user id claim found on the current request."));
-
       /// <summary>Store Manager creates a schedule for a staff member. Starts as Pending.</summary>
       [HttpPost]
       [Authorize(Roles = "StoreManager,Admin")]
       public async Task<ActionResult<Guid>> Create(CreateScheduleRequest request, CancellationToken cancellationToken)
       {
             var command = new CreateScheduleCommand(
-                request.StaffId, CurrentUserId, request.Date, request.ShiftType, request.StartTime, request.EndTime);
+                request.StaffId, request.Date, request.ShiftType, request.StartTime, request.EndTime);
 
             var id = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id }, id);
@@ -56,22 +51,23 @@ public class SchedulesController(ISender mediator) : ControllerBase
       [Authorize(Roles = "AreaManager,Admin")]
       public async Task<IActionResult> Approve(Guid id, CancellationToken cancellationToken)
       {
-            await _mediator.Send(new ApproveScheduleCommand(id, CurrentUserId), cancellationToken);
+            await _mediator.Send(new ApproveScheduleCommand(id), cancellationToken);
             return NoContent();
       }
 
-      /// <summary>Area Manager rejects a pending schedule.</summary>
+      /// <summary>Area Manager rejects a pending schedule. The schedule is then soft-deleted but stays
+      /// visible as rejected history (GET /api/schedules?status=Rejected).</summary>
       [HttpPost("{id:guid}/reject")]
       [Authorize(Roles = "AreaManager,Admin")]
-      public async Task<IActionResult> Reject(Guid id, CancellationToken cancellationToken)
+      public async Task<IActionResult> Reject(Guid id, RejectScheduleRequest request, CancellationToken cancellationToken)
       {
-            await _mediator.Send(new RejectScheduleCommand(id, CurrentUserId), cancellationToken);
+            await _mediator.Send(new RejectScheduleCommand(id, request.Reason), cancellationToken);
             return NoContent();
       }
 
-      /// <summary>Delete a schedule.</summary>
+      /// <summary>Withdraw a schedule you created (Pending only; an Approved one must go through reject).</summary>
       [HttpDelete("{id:guid}")]
-      [Authorize(Roles = "StoreManager,AreaManager,Admin")]
+      [Authorize(Roles = "StoreManager,Admin")]
       public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
       {
             await _mediator.Send(new DeleteScheduleCommand(id), cancellationToken);
@@ -86,9 +82,9 @@ public class SchedulesController(ISender mediator) : ControllerBase
             return Ok(schedule);
       }
 
-      /// <summary>List schedules filtered by staff/store/date range/status.</summary>
+      /// <summary>List schedules filtered by staff/store/date range/status. status=Rejected returns rejected history.</summary>
       [HttpGet]
-      public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetAll(
+      public async Task<ActionResult<PagedResult<ScheduleDto>>> GetAll(
           [FromQuery] Guid? staffId,
           [FromQuery] Guid? storeId,
           [FromQuery] DateOnly? from,
@@ -106,9 +102,23 @@ public class SchedulesController(ISender mediator) : ControllerBase
       /// <summary>Area Manager's queue of schedules awaiting their approval.</summary>
       [HttpGet("pending")]
       [Authorize(Roles = "AreaManager,Admin")]
-      public async Task<ActionResult<IEnumerable<ScheduleDto>>> GetPending(CancellationToken cancellationToken)
+      public async Task<ActionResult<PagedResult<ScheduleDto>>> GetPending(
+          [FromQuery] Guid? storeId,
+          [FromQuery] int page = 1,
+          [FromQuery] int pageSize = 20,
+          CancellationToken cancellationToken = default)
       {
-            var schedules = await _mediator.Send(new GetPendingSchedulesQuery(CurrentUserId), cancellationToken);
+            var schedules = await _mediator.Send(new GetPendingSchedulesQuery(storeId, page, pageSize), cancellationToken);
             return Ok(schedules);
+      }
+
+      /// <summary>Stores/months whose schedules haven't been approved yet, at or near month start — the
+      /// "approve or reject before the month arrives" alert.</summary>
+      [HttpGet("alerts")]
+      [Authorize(Roles = "AreaManager,Admin")]
+      public async Task<ActionResult<IReadOnlyList<ScheduleApprovalAlertDto>>> GetAlerts(CancellationToken cancellationToken)
+      {
+            var alerts = await _mediator.Send(new GetScheduleApprovalAlertsQuery(), cancellationToken);
+            return Ok(alerts);
       }
 }

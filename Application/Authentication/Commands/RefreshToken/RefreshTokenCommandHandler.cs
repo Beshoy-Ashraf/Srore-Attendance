@@ -8,7 +8,7 @@ using Domain.Interfaces;
 
 namespace Application.Authentication.Commands.RefreshToken;
 
-public class RefreshTokenCommandHandler(IUnitOfWork context, ITokenService tokenService)
+public class RefreshTokenCommandHandler(IUnitOfWork context, ITokenService tokenService, IClock clock)
     : IRequestHandler<RefreshTokenCommand, AuthResponseDto>
 {
       public async Task<AuthResponseDto> Handle(RefreshTokenCommand request, CancellationToken cancellationToken)
@@ -25,12 +25,16 @@ public class RefreshTokenCommandHandler(IUnitOfWork context, ITokenService token
             var user = await context.UserRepository.GetByIdAsync(userId, cancellationToken)
                 ?? throw new UnauthorizedException("User not found.");
 
+            if (user.DeleteDate != null)
+                  throw new UnauthorizedException("This account has been deactivated.");
+
             var refreshToken = user.RefreshTokens.FirstOrDefault(rt => rt.Token == request.RefreshToken)
                 ?? throw new UnauthorizedException("Invalid refresh token.");
 
             if (!refreshToken.IsActive)
                   throw new UnauthorizedException("Refresh token is no longer active.");
 
+            // Rotate: revoke the used token even if something downstream fails, so it can never be replayed.
             refreshToken.IsRevoked = true;
 
             var (newAccessToken, expiresAt) = tokenService.GenerateAccessToken(user);
@@ -39,7 +43,7 @@ public class RefreshTokenCommandHandler(IUnitOfWork context, ITokenService token
             user.RefreshTokens.Add(new Domain.Entities.RefreshToken
             {
                   Token = newRefreshTokenValue,
-                  RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(7)
+                  RefreshTokenExpiryTime = clock.UtcNow.AddDays(7)
             });
 
             await context.Complete(cancellationToken);

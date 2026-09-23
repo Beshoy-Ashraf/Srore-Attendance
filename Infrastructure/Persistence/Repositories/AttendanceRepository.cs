@@ -1,6 +1,6 @@
 using Domain.Entities;
 using Domain.Interfaces;
-using Infrastructure.Persistence;
+using Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
@@ -15,55 +15,57 @@ public class AttendanceRepository(AppDbContext context) : BaseRepository<Attenda
                 .OrderByDescending(a => a.CheckInTime)
                 .FirstOrDefaultAsync();
 
-      public async Task<IEnumerable<Attendance>> GetByStaffAndDateRangeAsync(Guid staffId, DateOnly from, DateOnly to)
+      public async Task<Attendance?> GetDetailedByIdAsync(Guid id, CancellationToken cancellationToken) =>
+            await _context.Set<Attendance>()
+                .Include(a => a.Staff).ThenInclude(u => u.Store)
+                .Include(a => a.EnteredManuallyByUser)
+                .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+      public async Task<PagedList<Attendance>> GetPagedAsync(AttendanceFilter filter, CancellationToken cancellationToken)
       {
-            var fromDate = from.ToDateTime(TimeOnly.MinValue);
-            var toDate = to.ToDateTime(TimeOnly.MaxValue);
+            IQueryable<Attendance> query = _context.Set<Attendance>()
+                .Include(a => a.Staff).ThenInclude(u => u.Store)
+                .Include(a => a.EnteredManuallyByUser);
 
-            return await _context.Set<Attendance>()
-                .Where(a => a.StaffId == staffId && a.CheckInTime >= fromDate && a.CheckInTime <= toDate)
-                .OrderBy(a => a.CheckInTime)
-                .ToListAsync();
-      }
+            if (filter.StaffId.HasValue)
+                  query = query.Where(a => a.StaffId == filter.StaffId.Value);
 
-      public async Task<IEnumerable<Attendance>> GetByStoreAndDateAsync(Guid storeId, DateOnly date)
-      {
-            var dayStart = date.ToDateTime(TimeOnly.MinValue);
-            var dayEnd = date.ToDateTime(TimeOnly.MaxValue);
-
-            return await _context.Set<Attendance>()
-                .Include(a => a.Staff)
-                .Where(a => a.Staff.StoreId == storeId && a.CheckInTime >= dayStart && a.CheckInTime <= dayEnd)
-                .ToListAsync();
-      }
-      public async Task<IEnumerable<Attendance>> GetFilteredAsync(
-        Guid? staffId, Guid? storeId, DateTime? from,
-    DateTime? to, int page, int pageSize)
-      {
-            var query = _context.Set<Attendance>().Include(a => a.Staff).AsQueryable();
-
-            if (staffId.HasValue)
-                  query = query.Where(a => a.StaffId == staffId.Value);
-
-            if (storeId.HasValue)
-                  query = query.Where(a => a.Staff.StoreId == storeId.Value);
-
-            if (from.HasValue)
+            if (filter.StoreIds is not null)
             {
-                  var utcFrom = DateTime.SpecifyKind(from.Value, DateTimeKind.Utc);
-                  query = query.Where(a => a.CreatedDate >= utcFrom);
+                  var storeIds = filter.StoreIds.ToList();
+                  query = query.Where(a => a.Staff.StoreId != null && storeIds.Contains(a.Staff.StoreId.Value));
             }
 
-            if (to.HasValue)
-            {
-                  var utcTo = DateTime.SpecifyKind(to.Value, DateTimeKind.Utc);
-                  query = query.Where(a => a.CreatedDate <= utcTo);
-            }
+            if (filter.FromUtc.HasValue)
+                  query = query.Where(a => a.CheckInTime >= filter.FromUtc.Value);
 
-            return await query
+            if (filter.ToUtcExclusive.HasValue)
+                  query = query.Where(a => a.CheckInTime < filter.ToUtcExclusive.Value);
+
+            if (filter.LateOnly == true)
+                  query = query.Where(a => a.IsLate);
+
+            var total = await query.CountAsync(cancellationToken);
+            var items = await query
                 .OrderByDescending(a => a.CheckInTime)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToListAsync();
+                .ThenBy(a => a.Id)
+                .Skip((filter.Page - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new PagedList<Attendance>(items, total);
+      }
+
+      public async Task<IReadOnlyList<Attendance>> GetInRangeAsync(
+            IReadOnlyCollection<Guid> staffIds, DateTime fromUtc, DateTime toUtcExclusive, CancellationToken cancellationToken)
+      {
+            var ids = staffIds.ToList();
+            return await _context.Set<Attendance>()
+                .Where(a => ids.Contains(a.StaffId)
+                            && a.CheckInTime != null
+                            && a.CheckInTime >= fromUtc
+                            && a.CheckInTime < toUtcExclusive)
+                .OrderBy(a => a.CheckInTime)
+                .ToListAsync(cancellationToken);
       }
 }

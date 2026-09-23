@@ -34,7 +34,14 @@ public class ScheduleConfiguration : IEntityTypeConfiguration<Schedule>
                 .HasForeignKey<Attendance>(a => a.ScheduleId)
                 .OnDelete(DeleteBehavior.SetNull);
 
-            // One schedule per staff member per day
-            builder.HasIndex(s => new { s.StaffId, s.Date }).IsUnique();
+            builder.Property(s => s.RejectionReason).HasMaxLength(500);
+
+            // A rejected (or deleted) schedule is soft-deleted, so it must not block a new schedule for the same day.
+            builder.HasQueryFilter(s => s.DeletedDate == null);
+
+            // One live schedule per staff member per day
+            builder.HasIndex(s => new { s.StaffId, s.Date })
+                .IsUnique()
+                .HasFilter("\"DeletedDate\" IS NULL");
       }
 }

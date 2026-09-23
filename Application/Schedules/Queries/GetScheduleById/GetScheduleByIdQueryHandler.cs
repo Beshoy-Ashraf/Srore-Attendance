@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Application.Schedules.Dtos;
 using Domain.Entities;
 using Domain.Exceptions;
@@ -6,30 +7,17 @@ using MediatR;
 
 namespace Application.Schedules.Queries.GetScheduleById;
 
-public class GetScheduleByIdQueryHandler : IRequestHandler<GetScheduleByIdQuery, ScheduleDto>
+public class GetScheduleByIdQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetScheduleByIdQuery, ScheduleDto>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetScheduleByIdQueryHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<ScheduleDto> Handle(GetScheduleByIdQuery request, CancellationToken cancellationToken)
       {
-            var schedule = await _unitOfWork.ScheduleRepository.GetByIdAsync(request.Id, cancellationToken)
+            // Look up including soft-deleted (rejected) rows: only the access check below decides visibility.
+            var schedule = await unitOfWork.ScheduleRepository.GetDetailedByIdAsync(request.Id, includeDeleted: true, cancellationToken)
                 ?? throw new NotFoundException(nameof(Schedule), request.Id);
 
-            return new ScheduleDto(
-                schedule.Id,
-                schedule.StaffId,
-                schedule.Date,
-                schedule.ShiftType,
-                schedule.StartTime,
-                schedule.EndTime,
-                schedule.Status,
-                schedule.CreatedByStoreManagerId,
-                schedule.ApprovedByAreaManagerId,
-                schedule.ApprovedDate);
+            await access.EnsureStaffAccessAsync(schedule.StaffId, cancellationToken);
+
+            return schedule.ToDto();
       }
 }

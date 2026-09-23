@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using API.Contracts.Requests;
+using Application.Common.Models;
 using Application.Requests.Commands.ApproveRequest;
 using Application.Requests.Commands.CreateRequest;
 using Application.Requests.Commands.RejectRequest;
@@ -21,18 +21,13 @@ public class RequestsController(ISender mediator) : ControllerBase
 {
       private readonly ISender _mediator = mediator;
 
-      // RequestedById / ApprovedByAreaManagerId always come from the token, never the body.
-      private Guid CurrentUserId =>
-            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)
-                ?? throw new UnauthorizedAccessException("No user id claim found on the current request."));
-
       /// <summary>Staff (or their Store Manager, on their behalf) submits an exception, replacement,
       /// sick leave, annual, or official-holiday request. Starts as Pending.</summary>
       [HttpPost]
       public async Task<ActionResult<Guid>> Create(CreateRequestRequest request, CancellationToken cancellationToken)
       {
             var command = new CreateRequestCommand(
-                request.StaffId, CurrentUserId, request.Type, request.DateFrom, request.DateTo, request.Reason);
+                request.StaffId, request.Type, request.DateFrom, request.DateTo, request.Reason);
 
             var id = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id }, id);
@@ -44,16 +39,17 @@ public class RequestsController(ISender mediator) : ControllerBase
       [Authorize(Roles = "AreaManager,Admin")]
       public async Task<IActionResult> Approve(Guid id, CancellationToken cancellationToken)
       {
-            await _mediator.Send(new ApproveRequestCommand(id, CurrentUserId), cancellationToken);
+            await _mediator.Send(new ApproveRequestCommand(id), cancellationToken);
             return NoContent();
       }
 
-      /// <summary>Area Manager rejects a pending request.</summary>
+      /// <summary>Area Manager rejects a pending request. The request is then soft-deleted but stays
+      /// visible as rejected history (GET /api/requests?status=Rejected).</summary>
       [HttpPost("{id:guid}/reject")]
       [Authorize(Roles = "AreaManager,Admin")]
-      public async Task<IActionResult> Reject(Guid id, CancellationToken cancellationToken)
+      public async Task<IActionResult> Reject(Guid id, RejectRequestRequest request, CancellationToken cancellationToken)
       {
-            await _mediator.Send(new RejectRequestCommand(id, CurrentUserId), cancellationToken);
+            await _mediator.Send(new RejectRequestCommand(id, request.Reason), cancellationToken);
             return NoContent();
       }
 
@@ -65,17 +61,18 @@ public class RequestsController(ISender mediator) : ControllerBase
             return Ok(result);
       }
 
-      /// <summary>List requests filtered by staff/type/status.</summary>
+      /// <summary>List requests filtered by staff/store/type/status. status=Rejected returns rejected history.</summary>
       [HttpGet]
-      public async Task<ActionResult<IEnumerable<RequestDto>>> GetAll(
+      public async Task<ActionResult<PagedResult<RequestDto>>> GetAll(
           [FromQuery] Guid? staffId,
+          [FromQuery] Guid? storeId,
           [FromQuery] RequestType? type,
           [FromQuery] RequestStatus? status,
           [FromQuery] int page = 1,
           [FromQuery] int pageSize = 20,
           CancellationToken cancellationToken = default)
       {
-            var query = new GetRequestsQuery(staffId, type, status, page, pageSize);
+            var query = new GetRequestsQuery(staffId, storeId, type, status, page, pageSize);
             var results = await _mediator.Send(query, cancellationToken);
             return Ok(results);
       }
@@ -83,9 +80,13 @@ public class RequestsController(ISender mediator) : ControllerBase
       /// <summary>Area Manager's queue of requests awaiting their approval.</summary>
       [HttpGet("pending")]
       [Authorize(Roles = "AreaManager,Admin")]
-      public async Task<ActionResult<IEnumerable<RequestDto>>> GetPending(CancellationToken cancellationToken)
+      public async Task<ActionResult<PagedResult<RequestDto>>> GetPending(
+          [FromQuery] Guid? storeId,
+          [FromQuery] int page = 1,
+          [FromQuery] int pageSize = 20,
+          CancellationToken cancellationToken = default)
       {
-            var results = await _mediator.Send(new GetPendingRequestsQuery(CurrentUserId), cancellationToken);
+            var results = await _mediator.Send(new GetPendingRequestsQuery(storeId, page, pageSize), cancellationToken);
             return Ok(results);
       }
 }

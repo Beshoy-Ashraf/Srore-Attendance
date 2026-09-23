@@ -1,71 +1,83 @@
+using Application.Common;
+using Application.Common.Interfaces;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Exceptions;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Stores.Commands.UpdateStore;
 
-public class UpdateStoreCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<UpdateStoreCommand>
+public class UpdateStoreCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<UpdateStoreCommand>
 {
-      private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
       public async Task Handle(UpdateStoreCommand request, CancellationToken cancellationToken)
       {
-            var store = await _unitOfWork.StoreRepository.GetByIdWithRoutersAsync(request.Id)
+            var me = await access.GetCurrentUserAsync(cancellationToken);
+            await access.EnsureStoreAccessAsync(request.Id, cancellationToken);
+
+            var store = await unitOfWork.StoreRepository.GetByIdWithDevicesAsync(request.Id)
                 ?? throw new NotFoundException(nameof(Store), request.Id);
 
-            foreach (var mac in request.RouterMacs)
+            // Only an admin may hand a store to a different area manager; an area manager may keep or clear their own.
+            if (request.AreaManagerId != store.AreaManagerId && me.Role != UserRole.Admin)
+                  throw new ForbiddenException("Only an admin can reassign a store's area manager.");
+
+            // Only an admin manages a store's device fleet — a store manager/area manager can't add
+            // rogue check-in devices.
+            var normalizedDeviceMacs = request.DevicesMacs.Select(MacAddress.Normalize).Distinct().ToList();
+            var currentDeviceMacs = store.Devices.Select(d => MacAddress.Normalize(d.MacAddress)).OrderBy(x => x).ToList();
+            var deviceMacsChanged = !normalizedDeviceMacs.OrderBy(x => x).SequenceEqual(currentDeviceMacs);
+            if (deviceMacsChanged && me.Role != UserRole.Admin)
+                  throw new ForbiddenException("Only an admin can manage a store's registered devices.");
+
+            if (request.AreaManagerId is { } amId)
             {
-                  var existingStore = await _unitOfWork.StoreRepository.GetByRouterMacAsync(mac);
-                  if (existingStore is not null && existingStore.Id != store.Id)
-                        throw new ConflictException($"Router MAC '{mac}' is already registered to another store.");
+                  var areaManager = await unitOfWork.UserRepository.GetUserByUserId(amId, cancellationToken);
+                  if (areaManager is null || areaManager.DeleteDate is not null || areaManager.Role != UserRole.AreaManager)
+                        throw new NotFoundException(nameof(User), amId);
             }
 
-            if (request.AreaManagerId is not null)
-            {
-                  var areaManager = await _unitOfWork.UserRepository.GetUserByUserId(request.AreaManagerId.Value, cancellationToken)
-                      ?? throw new NotFoundException(nameof(User), request.AreaManagerId.Value);
 
-                  if (areaManager.DeleteDate is not null)
-                        throw new NotFoundException(nameof(User), request.AreaManagerId.Value);
+
+            foreach (var mac in normalizedDeviceMacs)
+            {
+                  if (await unitOfWork.StoreRepository.IsDeviceMacRegisteredAsync(mac, excludeStoreId: store.Id))
+                        throw new ConflictException($"Device MAC '{mac}' is already registered to another store.");
             }
 
-            store.Name = request.Name;
+            store.Name = request.Name.Trim();
             store.AreaManagerId = request.AreaManagerId;
-            store.UpdateDate = DateTime.UtcNow;
+            store.UpdateDate = clock.UtcNow;
 
-            static string NormalizeMac(string mac) => mac.Trim().Replace("-", ":").ToUpperInvariant();
+            SyncDevices(store, normalizedDeviceMacs, clock);
 
-            var requestedMacs = request.RouterMacs
-                .Where(mac => !string.IsNullOrWhiteSpace(mac))
-                .Select(NormalizeMac)
-                .Distinct(StringComparer.OrdinalIgnoreCase)
+            await unitOfWork.Complete(cancellationToken);
+      }
+
+
+
+      private static void SyncDevices(Store store, List<string> desiredMacs, IClock clock)
+      {
+            var toRemove = store.Devices
+                .Where(d => !desiredMacs.Contains(MacAddress.Normalize(d.MacAddress)))
                 .ToList();
+            foreach (var device in toRemove)
+                  store.Devices.Remove(device);
 
-            var routersToRemove = store.RouterMacs
-                .Where(router => !requestedMacs.Contains(NormalizeMac(router.MacAddress)))
-                .ToList();
-
-            foreach (var router in routersToRemove)
+            foreach (var mac in desiredMacs)
             {
-                  store.RouterMacs.Remove(router);
-            }
-
-            foreach (var mac in requestedMacs)
-            {
-                  if (store.RouterMacs.Any(router => NormalizeMac(router.MacAddress) == mac))
+                  if (store.Devices.Any(d => MacAddress.Normalize(d.MacAddress) == mac))
                         continue;
 
-                  store.RouterMacs.Add(new StoreRouter
+                  store.Devices.Add(new StoreDevice
                   {
                         Id = Guid.NewGuid(),
                         StoreId = store.Id,
                         Store = store,
                         MacAddress = mac,
-                        CreatedDate = DateTime.UtcNow
+                        CreatedDate = clock.UtcNow
                   });
             }
-
-            await _unitOfWork.Complete(cancellationToken);
       }
 }

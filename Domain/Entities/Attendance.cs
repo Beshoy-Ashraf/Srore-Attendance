@@ -11,7 +11,6 @@ public class Attendance
       public DateTime? CheckInTime { get; set; }
       public DateTime? CheckOutTime { get; set; }
 
-      public string? CheckInRouterMac { get; set; }
       public string? CheckInDeviceMac { get; set; }
       public string? CheckInIp { get; set; }
 
@@ -24,6 +23,7 @@ public class Attendance
 
       public DateTime CreatedDate { get; set; }
       public DateTime? UpdateDate { get; set; }
+      public DateTime? DeletedDate { get; set; }
 
       // Navigation
       public User Staff { get; set; } = default!;

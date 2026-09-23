@@ -13,6 +13,6 @@ public class Store
       // Navigation
       public User? AreaManager { get; set; }
       public AttendanceSettings? AttendanceSettings { get; set; }
-      public ICollection<StoreRouter> RouterMacs { get; set; } = new List<StoreRouter>();
+      public ICollection<StoreDevice> Devices { get; set; } = new List<StoreDevice>();
       public ICollection<User> Staff { get; set; } = new List<User>();
 }

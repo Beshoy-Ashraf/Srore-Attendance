@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Application.Requests.Dtos;
 using Domain.Entities;
 using Domain.Exceptions;
@@ -6,25 +7,16 @@ using MediatR;
 
 namespace Application.Requests.Queries.GetRequestById;
 
-public class GetRequestByIdQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetRequestByIdQuery, RequestDto>
+public class GetRequestByIdQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetRequestByIdQuery, RequestDto>
 {
-      private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
       public async Task<RequestDto> Handle(GetRequestByIdQuery request, CancellationToken cancellationToken)
       {
-            var entity = await _unitOfWork.RequestRepository.GetByIdAsync(request.Id, cancellationToken)
+            var entity = await unitOfWork.RequestRepository.GetDetailedByIdAsync(request.Id, includeDeleted: true, cancellationToken)
                 ?? throw new NotFoundException(nameof(Request), request.Id);
 
-            return new RequestDto(
-                entity.Id,
-                entity.StaffId,
-                entity.Type,
-                entity.DateFrom,
-                entity.DateTo,
-                entity.Reason,
-                entity.Status,
-                entity.RequestedById,
-                entity.ApprovedByAreaManagerId,
-                entity.ApprovedDate);
+            await access.EnsureStaffAccessAsync(entity.StaffId, cancellationToken);
+
+            return entity.ToDto();
       }
 }

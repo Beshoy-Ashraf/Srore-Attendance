@@ -1,22 +1,29 @@
+using Application.Common.Interfaces;
+using Application.Common.Models;
 using Application.Stores.Dtos;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Stores.Queries.GetStores;
 
-public class GetStoresQueryHandler(IUnitOfWork unitOfWork) : IRequestHandler<GetStoresQuery, IEnumerable<StoreDto>>
+public class GetStoresQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetStoresQuery, PagedResult<StoreDto>>
 {
-      private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
-      public async Task<IEnumerable<StoreDto>> Handle(GetStoresQuery request, CancellationToken cancellationToken)
+      public async Task<PagedResult<StoreDto>> Handle(GetStoresQuery request, CancellationToken cancellationToken)
       {
-            var stores = await _unitOfWork.StoreRepository.GetFilteredAsync(
-                request.AreaManagerId, request.Page, request.PageSize);
+            var (page, pageSize) = Paging.Normalize(request.Page, request.PageSize);
+            var storeIds = await access.GetVisibleStoreIdsAsync(cancellationToken);
 
-            return stores.Select(store => new StoreDto(
-                store.Id,
-                store.Name,
-                store.RouterMacs.Select(r => r.MacAddress).ToList(),
-                store.AreaManagerId));
+            var result = await unitOfWork.StoreRepository.GetPagedAsync(
+                storeIds, request.AreaManagerId, page, pageSize, cancellationToken);
+
+            return PagedResult<StoreDto>.From(result, ToDto, page, pageSize);
       }
+
+      private static StoreDto ToDto(Domain.Entities.Store store) => new(
+          store.Id,
+          store.Name,
+          store.Devices.Select(r => r.MacAddress).ToList(),
+          store.AreaManagerId,
+          store.AreaManager?.DisplayName);
 }

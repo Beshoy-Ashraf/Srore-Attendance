@@ -1,6 +1,6 @@
 namespace Domain.Entities;
 
-public class StoreRouter
+public class StoreDevice
 {
       public Guid Id { get; set; }
       public Guid StoreId { get; set; }

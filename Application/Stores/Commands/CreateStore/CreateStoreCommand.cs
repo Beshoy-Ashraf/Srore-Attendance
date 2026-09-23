@@ -4,5 +4,5 @@ namespace Application.Stores.Commands.CreateStore;
 
 public record CreateStoreCommand(
     string Name,
-    List<string> RouterMacs,
+    List<string> DeviceMacs,
     Guid? AreaManagerId) : IRequest<Guid>;

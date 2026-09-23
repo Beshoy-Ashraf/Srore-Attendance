@@ -1,35 +1,16 @@
+using Application.Common.Interfaces;
 using Application.Users.Dtos;
-using Domain.Entities;
-using Domain.Exceptions;
+using Application.Users.Mappings;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Users.Queries.GetUserById;
 
-public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto>
+public class GetUserByIdQueryHandler(IAccessService access) : IRequestHandler<GetUserByIdQuery, UserDto>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetUserByIdQueryHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<UserDto> Handle(GetUserByIdQuery request, CancellationToken cancellationToken)
       {
-            var user = await _unitOfWork.UserRepository.GetByIdAsync(request.Id, cancellationToken)
-                ?? throw new NotFoundException(nameof(User), request.Id);
-            if (user.DeleteDate != null)
-            {
-                  throw new NotFoundException(nameof(User), request.Id);
-            }
-            return new UserDto(
-                user.Id,
-                user.Username,
-                user.Email,
-                user.ProfilePictureUrl,
-                user.DisplayName,
-                user.Role,
-                user.StoreId);
+            var user = await access.EnsureUserVisibleAsync(request.Id, cancellationToken);
+            return user.ToDto();
       }
 }

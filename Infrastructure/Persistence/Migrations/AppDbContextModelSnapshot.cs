@@ -36,10 +36,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasMaxLength(45)
                         .HasColumnType("character varying(45)");
 
-                    b.Property<string>("CheckInRouterMac")
-                        .HasMaxLength(17)
-                        .HasColumnType("character varying(17)");
-
                     b.Property<DateTime?>("CheckInTime")
                         .HasColumnType("timestamp without time zone");
 
@@ -47,6 +43,9 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<DateTime>("CreatedDate")
+                        .HasColumnType("timestamp without time zone");
+
+                    b.Property<DateTime?>("DeletedDate")
                         .HasColumnType("timestamp without time zone");
 
                     b.Property<Guid?>("EnteredManuallyBy")
@@ -59,7 +58,8 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean");
 
                     b.Property<string>("Notes")
-                        .HasColumnType("text");
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<Guid?>("ScheduleId")
                         .HasColumnType("uuid");
@@ -186,8 +186,15 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("DateTo")
                         .HasColumnType("date");
 
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<string>("Reason")
                         .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -257,8 +264,15 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<DateOnly>("DateTo")
                         .HasColumnType("date");
 
+                    b.Property<DateTime?>("DeletedDate")
+                        .HasColumnType("timestamp without time zone");
+
                     b.Property<string>("Reason")
                         .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
@@ -319,6 +333,10 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<TimeOnly>("EndTime")
                         .HasColumnType("time without time zone");
 
+                    b.Property<string>("RejectionReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
                     b.Property<string>("ShiftType")
                         .IsRequired()
                         .HasMaxLength(10)
@@ -345,7 +363,8 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("CreatedByStoreManagerId");
 
                     b.HasIndex("StaffId", "Date")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"DeletedDate\" IS NULL");
 
                     b.ToTable("Schedules", (string)null);
                 });
@@ -380,7 +399,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("Stores", (string)null);
                 });
 
-            modelBuilder.Entity("Domain.Entities.StoreRouter", b =>
+            modelBuilder.Entity("Domain.Entities.StoreDevice", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -408,7 +427,7 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("StoreId");
 
-                    b.ToTable("StoreRouters", (string)null);
+                    b.ToTable("StoreDevices", (string)null);
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>
@@ -597,10 +616,10 @@ namespace Infrastructure.Persistence.Migrations
                     b.Navigation("AreaManager");
                 });
 
-            modelBuilder.Entity("Domain.Entities.StoreRouter", b =>
+            modelBuilder.Entity("Domain.Entities.StoreDevice", b =>
                 {
                     b.HasOne("Domain.Entities.Store", "Store")
-                        .WithMany("RouterMacs")
+                        .WithMany("Devices")
                         .HasForeignKey("StoreId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -627,7 +646,7 @@ namespace Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("AttendanceSettings");
 
-                    b.Navigation("RouterMacs");
+                    b.Navigation("Devices");
 
                     b.Navigation("Staff");
                 });

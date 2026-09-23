@@ -7,7 +7,6 @@ public class ManualAttendanceCommandValidator : AbstractValidator<ManualAttendan
       public ManualAttendanceCommandValidator()
       {
             RuleFor(x => x.StaffId).NotEmpty();
-            RuleFor(x => x.EnteredManuallyBy).NotEmpty();
 
             RuleFor(x => x)
                 .Must(x => x.CheckInTime is not null || x.CheckOutTime is not null)

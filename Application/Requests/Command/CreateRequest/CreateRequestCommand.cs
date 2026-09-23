@@ -5,7 +5,6 @@ namespace Application.Requests.Commands.CreateRequest;
 
 public record CreateRequestCommand(
     Guid StaffId,
-    Guid RequestedById,
     RequestType Type,
     DateOnly DateFrom,
     DateOnly DateTo,

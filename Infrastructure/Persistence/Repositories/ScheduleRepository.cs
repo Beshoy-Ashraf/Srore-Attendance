@@ -1,55 +1,113 @@
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Interfaces;
-using Infrastructure.Persistence;
+using Domain.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.Repositories;
 
 public class ScheduleRepository(AppDbContext context) : BaseRepository<Schedule>(context), IScheduleRepository
 {
-
     private readonly AppDbContext _context = context;
+
+    private static IQueryable<Schedule> WithDetails(IQueryable<Schedule> query) =>
+        query
+            .Include(s => s.Staff).ThenInclude(u => u.Store)
+            .Include(s => s.CreatedByStoreManager)
+            .Include(s => s.ApprovedByAreaManager);
+
+    // The global filter (DeletedDate == null) makes "the live schedule of that day" the only match.
     public async Task<Schedule?> GetByStaffAndDateAsync(Guid staffId, DateOnly date) =>
-          await _context.Set<Schedule>()
-              .FirstOrDefaultAsync(s => s.StaffId == staffId && s.Date == date);
-
-    public async Task<IEnumerable<Schedule>> GetByStaffAndDateRangeAsync(Guid staffId, DateOnly from, DateOnly to) =>
         await _context.Set<Schedule>()
-            .Where(s => s.StaffId == staffId && s.Date >= from && s.Date <= to)
-            .OrderBy(s => s.Date)
-            .ToListAsync();
+            .FirstOrDefaultAsync(s => s.StaffId == staffId && s.Date == date);
 
-    public async Task<IEnumerable<Schedule>> GetPendingByAreaManagerAsync(Guid areaManagerId) =>
-        await _context.Set<Schedule>()
-            .Include(s => s.Staff)
-            .Where(s => s.Status == ScheduleStatus.Pending && s.Staff.StoreId != null
-                        && s.Staff.Store!.AreaManagerId == areaManagerId)
-            .ToListAsync();
-    public async Task<IEnumerable<Schedule>> GetFilteredAsync(
-Guid? staffId, Guid? storeId, DateOnly? from, DateOnly? to, ScheduleStatus? status, int page, int pageSize)
+    public async Task<Schedule?> GetDetailedByIdAsync(Guid id, bool includeDeleted, CancellationToken cancellationToken)
     {
-        var query = _context.Set<Schedule>().AsQueryable();
+        IQueryable<Schedule> query = _context.Set<Schedule>();
+        if (includeDeleted)
+            query = query.IgnoreQueryFilters();
 
-        if (staffId.HasValue)
-            query = query.Where(s => s.StaffId == staffId.Value);
+        return await WithDetails(query).FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+    }
 
-        if (storeId.HasValue)
-            query = query.Where(s => s.Staff.StoreId == storeId.Value);
+    public async Task<IReadOnlyList<Schedule>> GetByIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken cancellationToken)
+    {
+        var idList = ids.ToList();
+        return await _context.Set<Schedule>()
+            .Include(s => s.Staff)
+            .Where(s => idList.Contains(s.Id))
+            .ToListAsync(cancellationToken);
+    }
 
-        if (from.HasValue)
-            query = query.Where(s => s.Date >= from.Value);
+    public async Task<PagedList<Schedule>> GetPagedAsync(ScheduleFilter filter, CancellationToken cancellationToken)
+    {
+        IQueryable<Schedule> query = _context.Set<Schedule>();
 
-        if (to.HasValue)
-            query = query.Where(s => s.Date <= to.Value);
+        // A rejected schedule is soft-deleted; asking for "Rejected" is how the history is read.
+        if (filter.Status == ScheduleStatus.Rejected)
+            query = query.IgnoreQueryFilters();
 
-        if (status.HasValue)
-            query = query.Where(s => s.Status == status.Value);
+        query = WithDetails(query);
 
-        return await query
-            .OrderBy(s => s.Date)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        if (filter.StaffId.HasValue)
+            query = query.Where(s => s.StaffId == filter.StaffId.Value);
+
+        if (filter.StoreIds is not null)
+        {
+            var storeIds = filter.StoreIds.ToList();
+            query = query.Where(s => s.Staff.StoreId != null && storeIds.Contains(s.Staff.StoreId.Value));
+        }
+
+        if (filter.From.HasValue)
+            query = query.Where(s => s.Date >= filter.From.Value);
+
+        if (filter.To.HasValue)
+            query = query.Where(s => s.Date <= filter.To.Value);
+
+        if (filter.Status.HasValue)
+            query = query.Where(s => s.Status == filter.Status.Value);
+
+        var total = await query.CountAsync(cancellationToken);
+
+        IQueryable<Schedule> ordered = filter.Status is ScheduleStatus.Approved or ScheduleStatus.Rejected
+            ? query.OrderByDescending(s => s.ApprovedDate).ThenBy(s => s.Date).ThenBy(s => s.Id)
+            : query.OrderBy(s => s.Date).ThenBy(s => s.StartTime).ThenBy(s => s.Id);
+
+        var items = await ordered
+            .Skip((filter.Page - 1) * filter.PageSize)
+            .Take(filter.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedList<Schedule>(items, total);
+    }
+
+    public async Task<IReadOnlyList<Schedule>> GetApprovedInRangeAsync(
+        IReadOnlyCollection<Guid> staffIds, DateOnly from, DateOnly to, CancellationToken cancellationToken)
+    {
+        var ids = staffIds.ToList();
+        return await _context.Set<Schedule>()
+            .Where(s => ids.Contains(s.StaffId)
+                        && s.Status == ScheduleStatus.Approved
+                        && s.Date >= from && s.Date <= to)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PendingScheduleSlice>> GetPendingSlicesAsync(
+        IReadOnlyCollection<Guid>? storeIds, CancellationToken cancellationToken)
+    {
+        IQueryable<Schedule> query = _context.Set<Schedule>()
+            .Where(s => s.Status == ScheduleStatus.Pending && s.Staff.StoreId != null && s.Staff.Store != null);
+
+        if (storeIds is not null)
+        {
+            var ids = storeIds.ToList();
+            query = query.Where(s => s.Staff.StoreId != null && ids.Contains(s.Staff.StoreId.Value));
+        }
+
+        var rows = await query
+            .Select(s => new { StoreId = s.Staff.StoreId!.Value, StoreName = s.Staff.Store!.Name, s.Date })
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(r => new PendingScheduleSlice(r.StoreId, r.StoreName, r.Date)).ToList();
     }
 }

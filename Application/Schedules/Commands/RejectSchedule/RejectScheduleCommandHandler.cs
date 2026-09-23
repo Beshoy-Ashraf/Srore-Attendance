@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
 using Domain.Exceptions;
@@ -6,29 +7,32 @@ using MediatR;
 
 namespace Application.Schedules.Commands.RejectSchedule;
 
-public class RejectScheduleCommandHandler : IRequestHandler<RejectScheduleCommand>
+/// <summary>Rejecting a schedule soft-deletes it: it stops counting as the staff member's live schedule,
+/// while staying visible to the Area Manager as rejected history (see IScheduleRepository.GetPagedAsync).</summary>
+public class RejectScheduleCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<RejectScheduleCommand>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public RejectScheduleCommandHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task Handle(RejectScheduleCommand request, CancellationToken cancellationToken)
       {
-            var schedule = await _unitOfWork.ScheduleRepository.GetByIdAsync(request.Id, cancellationToken)
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.AreaManager);
+            var me = await access.GetCurrentUserAsync(cancellationToken);
+
+            var schedule = await unitOfWork.ScheduleRepository.GetByIdAsync(request.Id, cancellationToken)
                 ?? throw new NotFoundException(nameof(Schedule), request.Id);
+
+            await access.EnsureStaffAccessAsync(schedule.StaffId, cancellationToken);
 
             if (schedule.Status != ScheduleStatus.Pending)
                   throw new BadRequestException("Only pending schedules can be rejected.");
 
+            var now = clock.UtcNow;
             schedule.Status = ScheduleStatus.Rejected;
-            schedule.ApprovedByAreaManagerId = request.ApprovedByAreaManagerId;
-            schedule.ApprovedDate = DateTime.UtcNow;
-            schedule.UpdateDate = DateTime.UtcNow;
+            schedule.ApprovedByAreaManagerId = me.Id;
+            schedule.ApprovedDate = now;
+            schedule.UpdateDate = now;
+            schedule.RejectionReason = request.Reason;
+            schedule.DeletedDate = now;
 
-            await _unitOfWork.ScheduleRepository.UpdateAsync(schedule, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
       }
 }

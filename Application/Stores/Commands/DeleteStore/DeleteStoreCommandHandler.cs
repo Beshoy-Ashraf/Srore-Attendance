@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Domain.Entities;
 using Domain.Exceptions;
 using Domain.Interfaces;
@@ -5,18 +6,22 @@ using MediatR;
 
 namespace Application.Stores.Commands.DeleteStore;
 
-public class DeleteStoreCommandHandler(IUnitOfWork unitOfWork) : IRequestHandler<DeleteStoreCommand>
+public class DeleteStoreCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<DeleteStoreCommand>
 {
-      private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
       public async Task Handle(DeleteStoreCommand request, CancellationToken cancellationToken)
       {
-            var store = await _unitOfWork.StoreRepository.GetByIdAsync(request.Id, cancellationToken)
+            await access.EnsureStoreAccessAsync(request.Id, cancellationToken);
+
+            var store = await unitOfWork.StoreRepository.GetByIdAsync(request.Id, cancellationToken)
                 ?? throw new NotFoundException(nameof(Store), request.Id);
 
-            store.DeleteDate = DateTime.UtcNow;
+            if (await unitOfWork.StoreRepository.HasActiveStaffAsync(request.Id, cancellationToken))
+                  throw new ConflictException("This store still has active staff assigned to it. Reassign or remove them first.");
 
-            await _unitOfWork.StoreRepository.UpdateAsync(store, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            store.DeleteDate = clock.UtcNow;
+            store.UpdateDate = clock.UtcNow;
+
+            await unitOfWork.Complete(cancellationToken);
       }
 }

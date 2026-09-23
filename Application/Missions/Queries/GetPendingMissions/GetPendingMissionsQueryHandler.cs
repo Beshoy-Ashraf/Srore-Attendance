@@ -1,30 +1,32 @@
+using Application.Common.Interfaces;
+using Application.Common.Models;
 using Application.Missions.Dtos;
+using Domain.Enums;
 using Domain.Interfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Missions.Queries.GetPendingMissions;
 
-public class GetPendingMissionsQueryHandler : IRequestHandler<GetPendingMissionsQuery, IEnumerable<MissionDto>>
+public class GetPendingMissionsQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetPendingMissionsQuery, PagedResult<MissionDto>>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetPendingMissionsQueryHandler(IUnitOfWork unitOfWork)
+      public async Task<PagedResult<MissionDto>> Handle(GetPendingMissionsQuery request, CancellationToken cancellationToken)
       {
-            _unitOfWork = unitOfWork;
-      }
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.AreaManager);
+            var (page, pageSize) = Paging.Normalize(request.Page, request.PageSize);
 
-      public async Task<IEnumerable<MissionDto>> Handle(GetPendingMissionsQuery request, CancellationToken cancellationToken)
-      {
-            var missions = await _unitOfWork.MissionRepository.GetPendingByAreaManagerAsync(request.AreaManagerId);
+            var storeIds = await access.ResolveStoreScopeAsync(request.StoreId, cancellationToken);
 
-            return missions.Select(m => new MissionDto(
-                m.Id,
-                m.StaffId,
-                m.Reason,
-                m.DateFrom,
-                m.DateTo,
-                m.Status,
-                m.ApprovedByAreaManagerId,
-                m.ApprovedDate));
+            var filter = new MissionFilter
+            {
+                  StoreIds = storeIds,
+                  Status = RequestStatus.Pending,
+                  Page = page,
+                  PageSize = pageSize
+            };
+
+            var result = await unitOfWork.MissionRepository.GetPagedAsync(filter, cancellationToken);
+            return PagedResult<MissionDto>.From(result, m => m.ToDto(), page, pageSize);
       }
 }

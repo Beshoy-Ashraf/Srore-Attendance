@@ -33,10 +33,12 @@ public class AttendanceSettingsController : ControllerBase
       public async Task<ActionResult<Guid>> Upsert(
           Guid storeId, UpsertAttendanceSettingsCommand command, CancellationToken cancellationToken)
       {
-            if (storeId != command.StoreId)
+            var effectiveCommand = command.StoreId == Guid.Empty ? command with { StoreId = storeId } : command;
+
+            if (storeId != effectiveCommand.StoreId)
                   return BadRequest("Route storeId and body StoreId must match.");
 
-            var id = await _mediator.Send(command, cancellationToken);
+            var id = await _mediator.Send(effectiveCommand, cancellationToken);
             return Ok(id);
       }
 }

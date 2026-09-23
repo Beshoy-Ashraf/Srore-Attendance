@@ -13,6 +13,9 @@ public class MissionConfiguration : IEntityTypeConfiguration<Mission>
 
             builder.Property(m => m.Status).HasConversion<string>().HasMaxLength(20);
             builder.Property(m => m.Reason).HasMaxLength(500);
+            builder.Property(m => m.RejectionReason).HasMaxLength(500);
+
+            builder.HasQueryFilter(m => m.DeletedDate == null);
 
             builder.HasOne(m => m.Staff)
                 .WithMany()

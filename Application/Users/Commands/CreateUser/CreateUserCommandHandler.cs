@@ -1,42 +1,57 @@
 using Application.Common.Interfaces;
 using Domain.Entities;
+using Domain.Enums;
 using Domain.Exceptions;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Users.Commands.CreateUser;
 
-public class CreateUserCommandHandler(IUnitOfWork unitOfWork, IPasswordHasher passwordHasher) : IRequestHandler<CreateUserCommand, Guid>
+public class CreateUserCommandHandler(
+    IUnitOfWork unitOfWork,
+    IPasswordHasher passwordHasher,
+    IAccessService access,
+    IClock clock) : IRequestHandler<CreateUserCommand, Guid>
 {
-      private readonly IUnitOfWork _unitOfWork = unitOfWork;
-      private readonly IPasswordHasher _passwordHasher = passwordHasher;
-
       public async Task<Guid> Handle(CreateUserCommand request, CancellationToken cancellationToken)
       {
-            var existing = await _unitOfWork.UserRepository.GetUserByEmail(request.Email, cancellationToken);
-            var existingUsername = await _unitOfWork.UserRepository.GetUserByUsername(request.Username, cancellationToken);
-            if (existing is not null)
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.AreaManager);
+            var me = await access.GetCurrentUserAsync(cancellationToken);
+
+            var needsStore = request.Role is UserRole.Staff or UserRole.StoreManager;
+            if (me.Role == UserRole.AreaManager && !needsStore)
+                  throw new ForbiddenException("Area managers can only create staff and store managers.");
+
+            Guid? storeId = null;
+            if (needsStore)
+            {
+                  storeId = request.StoreId ?? throw new BadRequestException("Choose a store for this role.");
+                  await access.EnsureStoreAccessAsync(storeId.Value, cancellationToken);
+
+                  _ = await unitOfWork.StoreRepository.GetByIdWithDevicesAsync(storeId.Value)
+                      ?? throw new NotFoundException(nameof(Store), storeId.Value);
+            }
+
+            if (await unitOfWork.UserRepository.GetUserByEmail(request.Email, cancellationToken) is not null)
                   throw new ConflictException($"A user with email '{request.Email}' already exists.");
 
-            if (existingUsername is not null)
+            if (await unitOfWork.UserRepository.GetUserByUsername(request.Username, cancellationToken) is not null)
                   throw new ConflictException($"A user with username '{request.Username}' already exists.");
 
             var user = new User(
-                  request.Username,
-                  request.Email,
-                  _passwordHasher.Hash(request.Password),
-                  request.DisplayName,
-                  request.ProfileImageUrl?.ToString() ?? string.Empty,
-                  request.Role
-            )
+                  request.Username.Trim(),
+                  request.Email.Trim(),
+                  passwordHasher.Hash(request.Password),
+                  request.DisplayName.Trim(),
+                  request.ProfileImageUrl?.Trim() ?? string.Empty,
+                  request.Role)
             {
-                  StoreId = request.StoreId
-
+                  StoreId = storeId,
+                  CreatedDate = clock.UtcNow
             };
 
-
-            await _unitOfWork.UserRepository.AddAsync(user, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.UserRepository.AddAsync(user, cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
 
             return user.Id;
       }

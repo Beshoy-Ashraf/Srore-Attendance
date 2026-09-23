@@ -18,6 +18,9 @@ public class Schedule
       public Guid? ApprovedByAreaManagerId { get; set; }
       public DateTime? ApprovedDate { get; set; }
 
+      /// <summary>Why the Area Manager rejected the schedule. A rejected schedule is soft-deleted.</summary>
+      public string? RejectionReason { get; set; }
+
       public DateTime CreatedDate { get; set; }
       public DateTime? UpdateDate { get; set; }
       public DateTime? DeletedDate { get; set; }

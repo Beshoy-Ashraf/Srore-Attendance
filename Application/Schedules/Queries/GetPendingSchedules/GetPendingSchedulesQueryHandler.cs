@@ -1,32 +1,32 @@
+using Application.Common.Interfaces;
+using Application.Common.Models;
 using Application.Schedules.Dtos;
+using Domain.Enums;
 using Domain.Interfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Schedules.Queries.GetPendingSchedules;
 
-public class GetPendingSchedulesQueryHandler : IRequestHandler<GetPendingSchedulesQuery, IEnumerable<ScheduleDto>>
+public class GetPendingSchedulesQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetPendingSchedulesQuery, PagedResult<ScheduleDto>>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetPendingSchedulesQueryHandler(IUnitOfWork unitOfWork)
+      public async Task<PagedResult<ScheduleDto>> Handle(GetPendingSchedulesQuery request, CancellationToken cancellationToken)
       {
-            _unitOfWork = unitOfWork;
-      }
+            await access.EnsureRoleAsync(cancellationToken, UserRole.Admin, UserRole.AreaManager);
+            var (page, pageSize) = Paging.Normalize(request.Page, request.PageSize);
 
-      public async Task<IEnumerable<ScheduleDto>> Handle(GetPendingSchedulesQuery request, CancellationToken cancellationToken)
-      {
-            var schedules = await _unitOfWork.ScheduleRepository.GetPendingByAreaManagerAsync(request.AreaManagerId);
+            var storeIds = await access.ResolveStoreScopeAsync(request.StoreId, cancellationToken);
 
-            return schedules.Select(s => new ScheduleDto(
-                s.Id,
-                s.StaffId,
-                s.Date,
-                s.ShiftType,
-                s.StartTime,
-                s.EndTime,
-                s.Status,
-                s.CreatedByStoreManagerId,
-                s.ApprovedByAreaManagerId,
-                s.ApprovedDate));
+            var filter = new ScheduleFilter
+            {
+                  StoreIds = storeIds,
+                  Status = ScheduleStatus.Pending,
+                  Page = page,
+                  PageSize = pageSize
+            };
+
+            var result = await unitOfWork.ScheduleRepository.GetPagedAsync(filter, cancellationToken);
+            return PagedResult<ScheduleDto>.From(result, s => s.ToDto(), page, pageSize);
       }
 }

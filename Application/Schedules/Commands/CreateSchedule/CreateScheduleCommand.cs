@@ -5,7 +5,6 @@ namespace Application.Schedules.Commands.CreateSchedule;
 
 public record CreateScheduleCommand(
     Guid StaffId,
-    Guid CreatedByStoreManagerId,
     DateOnly Date,
     ShiftType ShiftType,
     TimeOnly StartTime,

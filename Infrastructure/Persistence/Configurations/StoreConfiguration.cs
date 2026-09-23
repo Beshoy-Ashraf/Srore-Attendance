@@ -23,9 +23,11 @@ public class StoreConfiguration : IEntityTypeConfiguration<Store>
             .HasForeignKey<AttendanceSettings>(a => a.StoreId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(s => s.RouterMacs)
-            .WithOne(r => r.Store)
-            .HasForeignKey(r => r.StoreId)
+
+
+        builder.HasMany(s => s.Devices)
+            .WithOne(d => d.Store)
+            .HasForeignKey(d => d.StoreId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasMany(s => s.Staff)

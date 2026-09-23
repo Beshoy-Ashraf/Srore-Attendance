@@ -1,3 +1,4 @@
+using Application.Common.Interfaces;
 using Domain.Entities;
 using Domain.Exceptions;
 using Domain.Interfaces;
@@ -5,21 +6,18 @@ using MediatR;
 
 namespace Application.AttendanceSettings.Commands.UpsertAttendanceSettings;
 
-public class UpsertAttendanceSettingsCommandHandler : IRequestHandler<UpsertAttendanceSettingsCommand, Guid>
+public class UpsertAttendanceSettingsCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<UpsertAttendanceSettingsCommand, Guid>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public UpsertAttendanceSettingsCommandHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<Guid> Handle(UpsertAttendanceSettingsCommand request, CancellationToken cancellationToken)
       {
-            var store = await _unitOfWork.StoreRepository.GetByIdAsync(request.StoreId, cancellationToken)
+            await access.EnsureStoreAccessAsync(request.StoreId, cancellationToken);
+
+            var store = await unitOfWork.StoreRepository.GetByIdAsync(request.StoreId, cancellationToken)
                 ?? throw new NotFoundException(nameof(Store), request.StoreId);
 
-            var settings = await _unitOfWork.AttendanceSettingsRepository.GetByStoreIdAsync(request.StoreId);
+            var settings = await unitOfWork.AttendanceSettingsRepository.GetByStoreIdAsync(request.StoreId);
+            var now = clock.UtcNow;
 
             if (settings is null)
             {
@@ -32,9 +30,9 @@ public class UpsertAttendanceSettingsCommandHandler : IRequestHandler<UpsertAtte
                         NightStart = request.NightStart,
                         NightEnd = request.NightEnd,
                         LateGraceMinutes = request.LateGraceMinutes,
-                        CreatedDate = DateTime.UtcNow
+                        CreatedDate = now
                   };
-                  await _unitOfWork.AttendanceSettingsRepository.AddAsync(settings, cancellationToken);
+                  await unitOfWork.AttendanceSettingsRepository.AddAsync(settings, cancellationToken);
             }
             else
             {
@@ -43,12 +41,10 @@ public class UpsertAttendanceSettingsCommandHandler : IRequestHandler<UpsertAtte
                   settings.NightStart = request.NightStart;
                   settings.NightEnd = request.NightEnd;
                   settings.LateGraceMinutes = request.LateGraceMinutes;
-                  settings.UpdateDate = DateTime.UtcNow;
-
-                  await _unitOfWork.AttendanceSettingsRepository.UpdateAsync(settings, cancellationToken);
+                  settings.UpdateDate = now;
             }
 
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
 
             return settings.Id;
       }

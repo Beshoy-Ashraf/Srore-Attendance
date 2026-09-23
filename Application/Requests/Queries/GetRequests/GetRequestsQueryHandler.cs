@@ -1,33 +1,35 @@
+using Application.Common.Interfaces;
+using Application.Common.Models;
 using Application.Requests.Dtos;
 using Domain.Interfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Requests.Queries.GetRequests;
 
-public class GetRequestsQueryHandler : IRequestHandler<GetRequestsQuery, IEnumerable<RequestDto>>
+public class GetRequestsQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetRequestsQuery, PagedResult<RequestDto>>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetRequestsQueryHandler(IUnitOfWork unitOfWork)
+      public async Task<PagedResult<RequestDto>> Handle(GetRequestsQuery request, CancellationToken cancellationToken)
       {
-            _unitOfWork = unitOfWork;
-      }
+            var (page, pageSize) = Paging.Normalize(request.Page, request.PageSize);
 
-      public async Task<IEnumerable<RequestDto>> Handle(GetRequestsQuery request, CancellationToken cancellationToken)
-      {
-            var requests = await _unitOfWork.RequestRepository.GetFilteredAsync(
-                request.StaffId, request.Type, request.Status, request.Page, request.PageSize);
+            if (request.StaffId is { } staffId)
+                  await access.EnsureStaffAccessAsync(staffId, cancellationToken);
 
-            return requests.Select(r => new RequestDto(
-                r.Id,
-                r.StaffId,
-                r.Type,
-                r.DateFrom,
-                r.DateTo,
-                r.Reason,
-                r.Status,
-                r.RequestedById,
-                r.ApprovedByAreaManagerId,
-                r.ApprovedDate));
+            var storeIds = await access.ResolveStoreScopeAsync(request.StoreId, cancellationToken);
+
+            var filter = new RequestFilter
+            {
+                  StaffId = request.StaffId,
+                  StoreIds = storeIds,
+                  Type = request.Type,
+                  Status = request.Status,
+                  Page = page,
+                  PageSize = pageSize
+            };
+
+            var result = await unitOfWork.RequestRepository.GetPagedAsync(filter, cancellationToken);
+            return PagedResult<RequestDto>.From(result, r => r.ToDto(), page, pageSize);
       }
 }

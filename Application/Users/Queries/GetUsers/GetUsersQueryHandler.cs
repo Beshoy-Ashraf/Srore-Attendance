@@ -1,35 +1,60 @@
+using Application.Common.Interfaces;
+using Application.Common.Models;
 using Application.Users.Dtos;
+using Application.Users.Mappings;
+using Domain.Enums;
 using Domain.Interfaces;
+using Domain.Models;
 using MediatR;
 
 namespace Application.Users.Queries.GetUsers;
 
-public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, IEnumerable<UserDto>>
+public class GetUsersQueryHandler(IUnitOfWork unitOfWork, IAccessService access) : IRequestHandler<GetUsersQuery, PagedResult<UserDto>>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetUsersQueryHandler(IUnitOfWork unitOfWork)
+      public async Task<PagedResult<UserDto>> Handle(GetUsersQuery request, CancellationToken cancellationToken)
       {
-            _unitOfWork = unitOfWork;
-      }
+            var me = await access.GetCurrentUserAsync(cancellationToken);
+            var (page, pageSize) = Paging.Normalize(request.Page, request.PageSize);
 
-      public async Task<IEnumerable<UserDto>> Handle(GetUsersQuery request, CancellationToken cancellationToken)
-      {
-            var users = await _unitOfWork.UserRepository.GetFilteredAsync(
-                request.StoreId, request.Role, request.Page, request.PageSize, cancellationToken);
+            IReadOnlyCollection<Guid>? storeIds;
+            IReadOnlyCollection<Guid>? alsoInclude = null;
 
-            if (users == null || !users.Any())
-                  return [];
+            if (request.StoreId is { } requestedStore)
+            {
+                  await access.EnsureStoreAccessAsync(requestedStore, cancellationToken);
+                  storeIds = new[] { requestedStore };
+            }
+            else
+            {
+                  storeIds = await access.GetVisibleStoreIdsAsync(cancellationToken);
 
+                  if (storeIds is not null)
+                  {
+                        // The caller and their store's area manager belong in the directory even though they
+                        // are not "in" the store, so approvals can show who decided.
+                        var extra = new List<Guid> { me.Id };
+                        if (me.Role != UserRole.AreaManager && me.StoreId is { } myStoreId)
+                        {
+                              var store = await unitOfWork.StoreRepository.GetByIdWithDevicesAsync(myStoreId);
+                              if (store?.AreaManagerId is { } areaManagerId)
+                                    extra.Add(areaManagerId);
+                        }
 
-            return users.Where(u => u.DeleteDate == null)
-                .Select(u => new UserDto(
-                    u.Id,
-                    u.Username,
-                    u.Email,
-                    u.ProfilePictureUrl,
-                    u.DisplayName,
-                    u.Role,
-                    u.StoreId));
+                        alsoInclude = extra;
+                  }
+            }
+
+            var filter = new UserFilter
+            {
+                  StoreIds = storeIds,
+                  AlsoIncludeUserIds = alsoInclude,
+                  Role = request.Role,
+                  Search = request.Search,
+                  Page = page,
+                  PageSize = pageSize
+            };
+
+            var result = await unitOfWork.UserRepository.GetPagedAsync(filter, cancellationToken);
+            return PagedResult<UserDto>.From(result, u => u.ToDto(), page, pageSize);
       }
 }

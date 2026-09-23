@@ -5,6 +5,7 @@ using System.Text;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using API.Middlewares;
+using API.Auth;
 using Application.Common.Interfaces;
 using Microsoft.OpenApi;
 using Microsoft.OpenApi.Models;
@@ -18,6 +19,7 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUser, HttpContextCurrentUser>();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>()!;
@@ -30,6 +32,7 @@ builder.Services.AddCors(options =>
         if (corsOrigins.Length > 0)
             policy.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod();
         else
+
             policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     });
 });
@@ -90,6 +93,8 @@ builder.Services.AddSwaggerGen(opt =>
 
 var app = builder.Build();
 
+// Migration and admin-seeding are both opt-in via configuration (see DatabaseInitializer).
+await app.Services.InitializeDatabaseAsync();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 

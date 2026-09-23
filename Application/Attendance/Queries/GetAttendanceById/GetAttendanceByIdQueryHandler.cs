@@ -1,36 +1,21 @@
 using Application.Attendance.Dtos;
+using Application.Common.Interfaces;
 using Domain.Exceptions;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Attendance.Queries.GetAttendanceById;
 
-public class GetAttendanceByIdQueryHandler : IRequestHandler<GetAttendanceByIdQuery, AttendanceDto>
+public class GetAttendanceByIdQueryHandler(IUnitOfWork unitOfWork, IAccessService access)
+    : IRequestHandler<GetAttendanceByIdQuery, AttendanceDto>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public GetAttendanceByIdQueryHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<AttendanceDto> Handle(GetAttendanceByIdQuery request, CancellationToken cancellationToken)
       {
-            var attendance = await _unitOfWork.AttendanceRepository.GetByIdAsync(request.Id, cancellationToken)
+            var attendance = await unitOfWork.AttendanceRepository.GetDetailedByIdAsync(request.Id, cancellationToken)
                 ?? throw new NotFoundException(nameof(Domain.Entities.Attendance), request.Id);
 
-            return new AttendanceDto(
-                attendance.Id,
-                attendance.StaffId,
-                attendance.ScheduleId,
-                attendance.CheckInTime,
-                attendance.CheckOutTime,
-                attendance.CheckInRouterMac,
-                attendance.CheckInDeviceMac,
-                attendance.CheckInIp,
-                attendance.VerificationMethod,
-                attendance.IsLate,
-                attendance.EnteredManuallyBy,
-                attendance.Notes);
+            await access.EnsureStaffAccessAsync(attendance.StaffId, cancellationToken);
+
+            return attendance.ToDto();
       }
 }

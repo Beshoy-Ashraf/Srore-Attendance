@@ -1,21 +1,20 @@
+using Application.Common;
 using FluentValidation;
 
 namespace Application.Stores.Commands.UpdateStore;
 
 public class UpdateStoreCommandValidator : AbstractValidator<UpdateStoreCommand>
 {
-      private const string MacPattern = "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$";
+    public UpdateStoreCommandValidator()
+    {
+        RuleFor(x => x.Id).NotEmpty();
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
 
-      public UpdateStoreCommandValidator()
-      {
-            RuleFor(x => x.Id).NotEmpty();
-            RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.DevicesMacs)
+            .NotEmpty().WithMessage("At least one device MAC is required.");
 
-            RuleFor(x => x.RouterMacs)
-                .NotEmpty().WithMessage("At least one router MAC is required.");
-
-            RuleForEach(x => x.RouterMacs)
-                .Matches(MacPattern)
-                .WithMessage("Each router MAC must be a valid MAC address, e.g. 00:1A:2B:3C:4D:5E.");
-      }
+        RuleForEach(x => x.DevicesMacs)
+            .Must(mac => MacAddress.IsValid(mac))
+            .WithMessage("Each device MAC must be a valid MAC address, e.g. 00:1A:2B:3C:4D:5E.");
+    }
 }

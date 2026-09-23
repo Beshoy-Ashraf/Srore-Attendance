@@ -1,21 +1,23 @@
+using Application.Common.Interfaces;
 using Domain.Entities;
 using Domain.Enums;
+using Domain.Exceptions;
 using Domain.Interfaces;
 using MediatR;
 
 namespace Application.Missions.Commands.CreateMission;
 
-public class CreateMissionCommandHandler : IRequestHandler<CreateMissionCommand, Guid>
+public class CreateMissionCommandHandler(IUnitOfWork unitOfWork, IAccessService access, IClock clock)
+    : IRequestHandler<CreateMissionCommand, Guid>
 {
-      private readonly IUnitOfWork _unitOfWork;
-
-      public CreateMissionCommandHandler(IUnitOfWork unitOfWork)
-      {
-            _unitOfWork = unitOfWork;
-      }
-
       public async Task<Guid> Handle(CreateMissionCommand request, CancellationToken cancellationToken)
       {
+            await access.EnsureStaffAccessAsync(request.StaffId, cancellationToken);
+
+            if (await unitOfWork.MissionRepository.HasOverlapAsync(
+                    request.StaffId, request.DateFrom, request.DateTo, excludeId: null, cancellationToken))
+                  throw new ConflictException("There's already a pending or approved mission covering that range.");
+
             var mission = new Mission
             {
                   Id = Guid.NewGuid(),
@@ -24,11 +26,11 @@ public class CreateMissionCommandHandler : IRequestHandler<CreateMissionCommand,
                   DateFrom = request.DateFrom,
                   DateTo = request.DateTo,
                   Status = RequestStatus.Pending,
-                  CreatedDate = DateTime.UtcNow
+                  CreatedDate = clock.UtcNow
             };
 
-            await _unitOfWork.MissionRepository.AddAsync(mission, cancellationToken);
-            await _unitOfWork.Complete(cancellationToken);
+            await unitOfWork.MissionRepository.AddAsync(mission, cancellationToken);
+            await unitOfWork.Complete(cancellationToken);
 
             return mission.Id;
       }

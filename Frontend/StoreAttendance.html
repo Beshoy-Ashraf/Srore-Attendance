@@ -472,6 +472,19 @@
                   font-size: .82rem
             }
 
+            .select-btn {
+                  appearance: none;
+                  -webkit-appearance: none;
+                  -moz-appearance: none;
+                  min-width: 170px;
+                  padding-right: 30px;
+                  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+                  background-position: calc(100% - 16px) calc(50% - 2px), calc(100% - 11px) calc(50% - 2px);
+                  background-size: 5px 5px, 5px 5px;
+                  background-repeat: no-repeat;
+                  background-color: var(--raise)
+            }
+
             .grid2 {
                   display: grid;
                   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
@@ -1270,7 +1283,8 @@
                         USE_MOCK: false,
                         BASE_URL: "http://localhost:5280/api",
                         AUTH: { login: "/auth/login", refresh: "/auth/refresh" },
-                        WEEK_START: 1 /* 0 = Sunday, 1 = Monday, 6 = Saturday */
+                        WEEK_START: 1, /* 0 = Sunday, 1 = Monday, 6 = Saturday */
+                        DAY_ROLLOVER_HOUR: 3 /* the attendance "day" ends at 03:00, so 01:30 AM still belongs to the previous day */
                   };
 
                   /* ---------- helpers ---------- */
@@ -1280,9 +1294,13 @@
                   var addDays = function (d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); };
                   var startOfWeek = function (d) { return addDays(d, -((d.getDay() - CONFIG.WEEK_START + 7) % 7)); };
                   var today = function () { return iso(new Date()); };
+                  /* Attendance day: runs from 03:00 to 02:59 the next morning. */
+                  var workDay = function (d) { var x = new Date(d); x.setHours(x.getHours() - CONFIG.DAY_ROLLOVER_HOUR); return iso(x); };
+                  var attendanceDay = function (value) { return workDay(new Date(value)); };
                   var fmtDay = function (s) { return parseISO(s).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" }); };
                   var fmtDate = function (s) { return parseISO(s).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }); };
                   var fmtShort = function (s) { return parseISO(s).toLocaleDateString(undefined, { day: "numeric", month: "short" }); };
+                  var fmtAttendanceDay = function (value) { return fmtDay(attendanceDay(value)); };
                   var hm = function (t) { return t ? String(t).slice(0, 5) : "–"; };
                   var clockOf = function (s) { return s ? new Date(s).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : "–"; };
                   var dur = function (a, b) { if (!a || !b) return "–"; var m = Math.max(0, Math.round((new Date(b) - new Date(a)) / 60000)); return Math.floor(m / 60) + "h " + pad(m % 60) + "m"; };
@@ -1335,11 +1353,11 @@
                         var d = {
                               n: 1000,
                               stores: [
-                                    { id: "s1", name: "Downtown Mall", routerMacs: ["A4:5E:60:11:22:33", "A4:5E:60:11:22:34"], areaManagerId: "u-am1" },
-                                    { id: "s2", name: "Harbor Street", routerMacs: ["B8:27:EB:44:55:66"], areaManagerId: "u-am1" },
-                                    { id: "s3", name: "Airport Road", routerMacs: ["3C:52:82:77:88:99"], areaManagerId: "u-am2" }
+                                    { id: "s1", name: "Downtown Mall", deviceMacs: ["00:1B:44:11:3A:B7", "00:1B:44:11:3A:B8", "00:1B:44:11:3A:B9"], areaManagerId: "u-am1" },
+                                    { id: "s2", name: "Harbor Street", deviceMacs: ["00:1B:44:22:4C:D1", "00:1B:44:22:4C:D2"], areaManagerId: "u-am1" },
+                                    { id: "s3", name: "Airport Road", deviceMacs: ["00:1B:44:33:5E:F1"], areaManagerId: "u-am2" }
                               ],
-                              users: [], settings: [], schedules: [], attendance: [], requests: [], missions: [], devices: {}
+                              users: [], settings: [], schedules: [], attendance: [], requests: [], missions: []
                         };
                         var U = function (id, username, displayName, role, storeId) { return { id: id, username: username, email: username + "@rota.example", displayName: displayName, role: role, storeId: storeId, password: "demo" }; };
                         d.users = [
@@ -1361,7 +1379,6 @@
                               var store = d.stores.find(function (s) { return s.id === u.storeId; });
                               var st = d.settings.find(function (s) { return s.storeId === u.storeId; }) || DEFAULT_SETTINGS;
                               var sm = d.users.find(function (x) { return x.role === "StoreManager" && x.storeId === u.storeId; });
-                              d.devices[u.id] = { mac: fakeMac(u.id), ip: "192.168.1." + (20 + si) };
                               for (var k = -10; k <= 13; k++) {
                                     if ((((k + si) % 7) + 7) % 7 === 3) continue;
                                     var type = pat[(((k + si) % 6) + 6) % 6], status = k >= 7 ? "Pending" : "Approved";
@@ -1375,7 +1392,7 @@
                                           var off = ((((k * 7 + si * 5) % 17) + 17) % 17) - 4, manual = (u.id === "u-st2" && k === -3);
                                           d.attendance.push({
                                                 id: "at-" + u.id + "-" + k, staffId: u.id, scheduleId: sc.id, checkInTime: mk(date, t[0], off), checkOutTime: mk(date, t[1], (si % 4) - 1),
-                                                checkInRouterMac: manual ? undefined : store.routerMacs[0], checkInDeviceMac: manual ? undefined : d.devices[u.id].mac, checkInIp: manual ? undefined : d.devices[u.id].ip,
+                                                checkInDeviceMac: manual ? undefined : store.deviceMacs[si % store.deviceMacs.length], checkInIp: manual ? undefined : ("192.168.1." + (20 + si)),
                                                 verificationMethod: manual ? "Manual" : "Network", isLate: off > st.lateGraceMinutes, enteredManuallyBy: manual ? sm.id : undefined, notes: manual ? "Terminal was offline, entered by manager." : undefined
                                           });
                                     }
@@ -1463,12 +1480,15 @@
                   on("POST", "/stores", function (c) {
                         need(c.me, "Admin", "AreaManager"); var b = c.body;
                         if (!b.name) throw new ApiError(400, "Store name is required.");
-                        var s = { id: nid("s"), name: b.name, routerMacs: (b.routerMacs || []).map(normMac), areaManagerId: c.me.role === "AreaManager" ? c.me.id : (b.areaManagerId || undefined) };
+                        if (!b.deviceMacs || !b.deviceMacs.length) throw new ApiError(400, "At least one device MAC is required.");
+                        var s = { id: nid("s"), name: b.name, deviceMacs: (b.deviceMacs || []).map(normMac), areaManagerId: c.me.role === "AreaManager" ? c.me.id : (b.areaManagerId || undefined) };
                         db.stores.push(s); return s;
                   });
                   on("PUT", "/stores/:id", function (c) {
                         need(c.me, "Admin", "AreaManager"); var s = find("stores", c.p.id, "Store");
-                        s.name = c.body.name; s.routerMacs = (c.body.routerMacs || []).map(normMac);
+                        s.name = c.body.name;
+                        if (c.me.role === "Admin") s.deviceMacs = (c.body.deviceMacs || []).map(normMac);
+                        else if (c.body.deviceMacs && c.body.deviceMacs.map(normMac).sort().join() !== (s.deviceMacs || []).slice().sort().join()) throw new ApiError(403, "Only an admin can manage a store's registered devices.");
                         if (c.me.role === "Admin") s.areaManagerId = c.body.areaManagerId || undefined; return s;
                   });
                   on("DELETE", "/stores/:id", function (c) { need(c.me, "Admin", "AreaManager"); var s = find("stores", c.p.id, "Store"); db.stores = db.stores.filter(function (x) { return x !== s; }); return null; });
@@ -1502,35 +1522,44 @@
                         s.status = "Pending"; s.approvedByAreaManagerId = undefined; s.approvedDate = undefined; return s;
                   });
                   on("POST", "/schedules/:id/approve", function (c) { need(c.me, "AreaManager", "Admin"); var s = find("schedules", c.p.id, "Schedule"); s.status = "Approved"; s.approvedByAreaManagerId = c.me.id; s.approvedDate = new Date().toISOString(); return s; });
-                  on("POST", "/schedules/:id/reject", function (c) { need(c.me, "AreaManager", "Admin"); var s = find("schedules", c.p.id, "Schedule"); s.status = "Rejected"; s.approvedByAreaManagerId = c.me.id; s.approvedDate = new Date().toISOString(); return s; });
+                  on("POST", "/schedules/:id/reject", function (c) { need(c.me, "AreaManager", "Admin"); if (!c.body || !c.body.reason) throw new ApiError(400, "A rejection reason is required."); var s = find("schedules", c.p.id, "Schedule"); s.status = "Rejected"; s.approvedByAreaManagerId = c.me.id; s.approvedDate = new Date().toISOString(); s.rejectionReason = c.body.reason; return s; });
+                  on("GET", "/schedules/alerts", function (c) {
+                        need(c.me, "AreaManager", "Admin");
+                        var mine = db.schedules.filter(function (s) { return s.status === "Pending" && canSeeStaff(c.me, s.staffId); });
+                        var byKey = {};
+                        mine.forEach(function (s) {
+                              var storeId = storeOfStaff(s.staffId), d = parseISO(s.date), key = storeId + ":" + d.getFullYear() + "-" + d.getMonth();
+                              if (!byKey[key]) byKey[key] = { storeId: storeId, storeName: db.stores.find(function (x) { return x.id === storeId; }).name, year: d.getFullYear(), month: d.getMonth() + 1, pendingCount: 0 };
+                              byKey[key].pendingCount++;
+                        });
+                        var now = new Date();
+                        return Object.keys(byKey).map(function (k) { var a = byKey[k]; a.monthHasStarted = new Date(a.year, a.month - 1, 1) <= now; return a; });
+                  });
                   on("DELETE", "/schedules/:id", function (c) { need(c.me, "StoreManager", "AreaManager", "Admin"); var s = find("schedules", c.p.id, "Schedule"); db.schedules = db.schedules.filter(function (x) { return x !== s; }); return null; });
 
                   /* attendance */
                   function lateFor(staffId, dateStr, when) {
                         var sc = db.schedules.find(function (s) { return s.staffId === staffId && s.date === dateStr && s.status === "Approved" && !isLeave(s.shiftType); });
                         var st = settingsFor(storeOfStaff(staffId));
-                        var m = when.getHours() * 60 + when.getMinutes();
+                        var m = when.getHours() * 60 + when.getMinutes() + (when.getHours() < CONFIG.DAY_ROLLOVER_HOUR ? 1440 : 0);
                         return { sc: sc, late: !!sc && m > mins(sc.startTime) + (st.lateGraceMinutes || 0) };
                   }
                   function checkNetwork(me, b) {
                         var store = db.stores.find(function (s) { return s.id === me.storeId; });
                         if (!store) throw new ApiError(400, "Your account isn't linked to a store.");
-                        if (store.routerMacs.indexOf(normMac(b.routerMac)) < 0) throw new ApiError(400, "This network isn't registered for " + store.name + ". Connect to the store network and try again.");
-                        var dev = db.devices[me.id];
-                        if (!dev) { db.devices[me.id] = { mac: normMac(b.deviceMac), ip: b.deviceIp }; }
-                        else if (dev.mac !== normMac(b.deviceMac)) throw new ApiError(400, "This computer isn't registered to you. Ask your store manager to enter your attendance.");
+                        if ((store.deviceMacs || []).indexOf(normMac(b.deviceMac)) < 0) throw new ApiError(400, "This PC isn't registered as a device for " + store.name + ". Ask your Admin to register it.");
                         return store;
                   }
                   on("POST", "/attendance/check-in", function (c) {
-                        var store = checkNetwork(c.me, c.body), now = new Date(), t = iso(now);
-                        if (db.attendance.some(function (a) { return a.staffId === c.me.id && a.checkInTime && iso(new Date(a.checkInTime)) === t; })) throw new ApiError(409, "You've already checked in today.");
+                        var store = checkNetwork(c.me, c.body), now = new Date(), t = workDay(now);
+                        if (db.attendance.some(function (a) { return a.staffId === c.me.id && a.checkInTime && workDay(new Date(a.checkInTime)) === t; })) throw new ApiError(409, "You've already checked in today.");
                         var l = lateFor(c.me.id, t, now);
-                        var rec = { id: nid("at"), staffId: c.me.id, scheduleId: l.sc && l.sc.id, checkInTime: now.toISOString(), checkInRouterMac: normMac(c.body.routerMac), checkInDeviceMac: normMac(c.body.deviceMac), checkInIp: c.body.deviceIp, verificationMethod: "Network", isLate: l.late };
+                        var rec = { id: nid("at"), staffId: c.me.id, scheduleId: l.sc && l.sc.id, checkInTime: now.toISOString(), checkInDeviceMac: normMac(c.body.deviceMac), checkInIp: c.body.deviceIp, verificationMethod: "Network", isLate: l.late };
                         db.attendance.push(rec); return rec;
                   });
                   on("POST", "/attendance/check-out", function (c) {
-                        checkNetwork(c.me, c.body); var t = today();
-                        var rec = db.attendance.find(function (a) { return a.staffId === c.me.id && a.checkInTime && !a.checkOutTime && iso(new Date(a.checkInTime)) === t; });
+                        checkNetwork(c.me, c.body); var t = workDay(new Date());
+                        var rec = db.attendance.find(function (a) { return a.staffId === c.me.id && a.checkInTime && !a.checkOutTime && workDay(new Date(a.checkInTime)) === t; });
                         if (!rec) throw new ApiError(404, "There's no open check-in to close.");
                         rec.checkOutTime = new Date().toISOString(); return rec;
                   });
@@ -1544,8 +1573,8 @@
                   function attFilter(a, q) {
                         if (q.staffId) a = a.filter(function (r) { return r.staffId === q.staffId; });
                         if (q.storeId) a = a.filter(function (r) { return storeOfStaff(r.staffId) === q.storeId; });
-                        if (q.from) a = a.filter(function (r) { return iso(new Date(r.checkInTime)) >= q.from; });
-                        if (q.to) a = a.filter(function (r) { return iso(new Date(r.checkInTime)) <= q.to; });
+                        if (q.from) a = a.filter(function (r) { return attendanceDay(r.checkInTime) >= q.from; });
+                        if (q.to) a = a.filter(function (r) { return attendanceDay(r.checkInTime) <= q.to; });
                         return a.sort(function (x, y) { return y.checkInTime.localeCompare(x.checkInTime); });
                   }
                   on("GET", "/attendance/me", function (c) { return paged(attFilter(db.attendance.filter(function (r) { return r.staffId === c.me.id; }), c.q), c.q); });
@@ -1580,7 +1609,7 @@
                               need(c.me, "AreaManager", "Admin"); var r = find(coll, c.p.id, label);
                               r.status = "Approved"; r.approvedByAreaManagerId = c.me.id; r.approvedDate = new Date().toISOString(); if (onApprove) onApprove(r, c.me); return r;
                         });
-                        on("POST", base + "/:id/reject", function (c) { need(c.me, "AreaManager", "Admin"); var r = find(coll, c.p.id, label); r.status = "Rejected"; r.approvedByAreaManagerId = c.me.id; r.approvedDate = new Date().toISOString(); return r; });
+                        on("POST", base + "/:id/reject", function (c) { need(c.me, "AreaManager", "Admin"); if (!c.body || !c.body.reason) throw new ApiError(400, "A rejection reason is required."); var r = find(coll, c.p.id, label); r.status = "Rejected"; r.approvedByAreaManagerId = c.me.id; r.approvedDate = new Date().toISOString(); r.rejectionReason = c.body.reason; return r; });
                   }
                   approvalRoutes("/requests", "requests", "Request", function (r, me) {
                         if (["Annual", "SickLeave", "OfficialHoliday"].indexOf(r.type) < 0) return;
@@ -1659,7 +1688,7 @@
                   }
                   var L = function (path) { return function (query) { return request("GET", path, { query: query }).then(norm); }; };
                   var POST = function (path) { return function (body) { return request("POST", path, { body: body }); }; };
-                  var act = function (base, verb) { return function (id) { return request("POST", base + "/" + id + "/" + verb); }; };
+                  var act = function (base, verb) { return function (id, body) { return request("POST", base + "/" + id + "/" + verb, body ? { body: body } : undefined); }; };
                   var api = {
                         async login(email, password) {
                               var r = await request("POST", CONFIG.AUTH.login, { body: { email: email, password: password } });
@@ -1667,20 +1696,24 @@
                               if (r.user) return r.user;
                               var c = decodeJwt(session.token); return request("GET", "/users/" + c.id);
                         },
-                        users: { list: L("/users"), get: function (id) { return request("GET", "/users/" + id); }, create: POST("/users"), update: function (id, b) { return request("PUT", "/users/" + id, { body: b }); }, remove: function (id) { return request("DELETE", "/users/" + id); } },
+                        async logout() {
+                              try { if (!CONFIG.USE_MOCK && session.refresh) await request("POST", "/auth/logout", { body: { refreshToken: session.refresh } }); } catch (e) { }
+                              clearSession();
+                        },
+                        users: { list: L("/users"), get: function (id) { return request("GET", "/users/" + id); }, create: POST("/users"), update: function (id, b) { return request("PUT", "/users/" + id, { body: b }); }, remove: function (id) { return request("DELETE", "/users/" + id); }, changePassword: POST("/users/me/change-password"), resetPassword: function (id, newPassword) { return request("POST", "/users/" + id + "/reset-password", { body: { newPassword: newPassword } }); } },
                         stores: { list: L("/stores"), create: POST("/stores"), update: function (id, b) { return request("PUT", "/stores/" + id, { body: b }); }, remove: function (id) { return request("DELETE", "/stores/" + id); } },
                         settings: { get: function (id) { return request("GET", "/stores/" + id + "/attendance-settings"); }, save: function (id, b) { return request("PUT", "/stores/" + id + "/attendance-settings", { body: b }); } },
-                        schedules: { list: L("/schedules"), pending: L("/schedules/pending"), create: POST("/schedules"), update: function (id, b) { return request("PUT", "/schedules/" + id, { body: b }); }, approve: act("/schedules", "approve"), reject: act("/schedules", "reject"), remove: function (id) { return request("DELETE", "/schedules/" + id); } },
+                        schedules: { list: L("/schedules"), pending: L("/schedules/pending"), alerts: function () { return request("GET", "/schedules/alerts"); }, create: POST("/schedules"), update: function (id, b) { return request("PUT", "/schedules/" + id, { body: b }); }, approve: act("/schedules", "approve"), reject: function (id, reason) { return act("/schedules", "reject")(id, { reason: reason }); }, remove: function (id) { return request("DELETE", "/schedules/" + id); } },
                         attendance: { list: L("/attendance"), mine: L("/attendance/me"), checkIn: POST("/attendance/check-in"), checkOut: POST("/attendance/check-out"), manual: POST("/attendance/manual") },
-                        requests: { list: L("/requests"), pending: L("/requests/pending"), create: POST("/requests"), approve: act("/requests", "approve"), reject: act("/requests", "reject") },
-                        missions: { list: L("/missions"), pending: L("/missions/pending"), create: POST("/missions"), approve: act("/missions", "approve"), reject: act("/missions", "reject") }
+                        requests: { list: L("/requests"), pending: L("/requests/pending"), create: POST("/requests"), approve: act("/requests", "approve"), reject: function (id, reason) { return act("/requests", "reject")(id, { reason: reason }); } },
+                        missions: { list: L("/missions"), pending: L("/missions/pending"), create: POST("/missions"), approve: act("/missions", "approve"), reject: function (id, reason) { return act("/missions", "reject")(id, { reason: reason }); } }
                   };
 
                   /* =====================================================================
                      CHECK-IN DEVICE ADAPTER
                      Browsers can't read MAC addresses. Pick one approach and implement it here:
-                     - Desktop agent: expose window.attendanceAgent.getNetworkInfo() -> {routerMac, deviceMac, deviceIp}
-                     - Server-side inference: have the backend derive the router MAC and stop sending it.
+                     - Desktop agent: expose window.attendanceAgent.getNetworkInfo() -> {deviceMac, deviceIp}
+                     - Server-side inference: have the backend derive the device identity and stop sending it.
                      In demo mode this simulates a store PC so the flow can be tried.
                      ===================================================================== */
                   function hasAgent() { return !!(window.attendanceAgent && typeof window.attendanceAgent.getNetworkInfo === "function"); }
@@ -1703,31 +1736,30 @@
                   function ensureMac(v) {
                         return v ? normMac(v) : "";
                   }
-                  function readStoredRouterMac() {
-                        try { return normMac(localStorage.getItem("attendance.routerMac") || ""); } catch (e) { return ""; }
+                  function readStoredDeviceMac() {
+                        try { return normMac(localStorage.getItem("attendance.deviceMac") || ""); } catch (e) { return ""; }
                   }
-                  function saveStoredRouterMac(v) {
-                        try { if (v && v.trim()) localStorage.setItem("attendance.routerMac", normMac(v)); } catch (e) { }
+                  function saveStoredDeviceMac(v) {
+                        try { if (v && v.trim()) localStorage.setItem("attendance.deviceMac", normMac(v)); } catch (e) { }
                   }
-                  async function browserNetworkInfo(user, routerMacOverride, store) {
-                        var storedRouter = readStoredRouterMac();
-                        var storeRouter = (store && Array.isArray(store.routerMacs) && store.routerMacs.length) ? store.routerMacs[0] : "";
-                        var routerMac = ensureMac(routerMacOverride != null ? routerMacOverride : (storedRouter || storeRouter));
-                        var deviceMac = ensureMac(localStorage.getItem("attendance.deviceMac") || fakeMac((user && user.id) || "browser-device"));
-                        try { localStorage.setItem("attendance.deviceMac", deviceMac); } catch (e) { }
-                        if (routerMac) saveStoredRouterMac(routerMac);
+                  async function browserNetworkInfo(user, store, deviceMacOverride) {
+                        // Devices are a static, admin-managed fleet per store — this terminal's MAC doesn't change,
+                        // so remember whichever one was picked/confirmed here rather than making up a per-user MAC.
+                        var storedDevice = readStoredDeviceMac();
+                        var storeDevice = (store && Array.isArray(store.deviceMacs) && store.deviceMacs.length) ? store.deviceMacs[0] : "";
+                        var deviceMac = ensureMac(deviceMacOverride != null ? deviceMacOverride : (storedDevice || storeDevice));
+                        if (deviceMac) saveStoredDeviceMac(deviceMac);
                         return {
-                              routerMac: routerMac,
                               deviceMac: deviceMac
                         };
                   }
-                  async function readNetwork(sim, store, user, routerMacOverride) {
+                  async function readNetwork(sim, store, user, deviceMacOverride) {
                         if (hasAgent()) return window.attendanceAgent.getNetworkInfo();
                         if (CONFIG.USE_MOCK) {
-                              var macs = (store && store.routerMacs) || [];
-                              return { routerMac: sim === "router" ? "DE:AD:BE:EF:00:01" : (macs[0] || "A4:5E:60:00:00:01"), deviceMac: sim === "device" ? "00:1B:44:11:3A:B7" : fakeMac(user.id) };
+                              var devs = (store && store.deviceMacs) || [];
+                              return { deviceMac: sim === "device" ? "00:1B:44:11:3A:B7" : (devs[0] || "00:1B:44:00:00:01") };
                         }
-                        return browserNetworkInfo(user, routerMacOverride, store);
+                        return browserNetworkInfo(user, store, deviceMacOverride);
                   }
                   if (!window.attendanceAgent) {
                         window.attendanceAgent = {
@@ -1882,46 +1914,50 @@
                      ===================================================================== */
                   function CheckInPage() {
                         var auth = useAuth(), user = auth.user, dir = useDir(), toast = useToast();
-                        var now = useNow(), day = iso(now);
+                        var now = useNow(), day = workDay(now);
                         var store = dir.stores.find(function (s) { return s.id === user.storeId; });
                         var sched = useQuery(function () { return api.schedules.list({ staffId: user.id, from: day, to: day, pageSize: 10 }); }, [user.id, day]);
-                        var att = useQuery(function () { return api.attendance.mine({ from: day, to: day, pageSize: 5 }); }, [day]);
+                        var att = useQuery(function () { return api.attendance.mine({ from: day, to: iso(addDays(parseISO(day), 1)), pageSize: 20 }); }, [user.id, day]);
                         var sm = useState("ok"), sim = sm[0], setSim = sm[1];
-                        var routerState = useState(readStoredRouterMac()), routerMac = routerState[0], setRouterMac = routerState[1];
+                        var deviceState = useState(readStoredDeviceMac() || ((store && store.deviceMacs && store.deviceMacs[0]) || "")), deviceMac = deviceState[0], setDeviceMac = deviceState[1];
                         var bs = useState(false), busy = bs[0], setBusy = bs[1];
                         var es = useState(""), err = es[0], setErr = es[1];
-                        var agent = hasAgent(), canRead = agent || CONFIG.USE_MOCK || !!routerMac.trim();
-                        var rec = items(att)[0], phase = !rec ? "idle" : rec.checkOutTime ? "done" : "in";
+                        var agent = hasAgent(), canRead = agent || CONFIG.USE_MOCK || !!deviceMac.trim();
+                        var todays = items(att).filter(function (r) { return r.checkInTime && workDay(new Date(r.checkInTime)) === day; });
+                        var rec = todays.find(function (r) { return !r.checkOutTime; }) || todays[0];
+                        var phase = !rec ? "idle" : rec.checkOutTime ? "done" : "in";
+                        var syncing = att.loading, blocked = busy || syncing || !!att.error || phase === "done" || !canRead;
+                        var label = phase === "done" ? "Checked out" : (busy || syncing) ? (att.data ? "Working…" : "Loading…") : phase === "idle" ? "Check in" : "Check out";
                         var shift = items(sched).find(function (s) { return s.status === "Approved"; });
                         async function punch() {
                               setBusy(true); setErr("");
                               try {
-                                    var info = await readNetwork(sim, store, user, routerMac);
-                                    if (!info || !info.routerMac || !info.routerMac.trim() || info.routerMac === "00:00:00:00:00:00") {
-                                          throw new Error("No valid router MAC was found for this store. Enter the store router MAC first.");
+                                    var info = await readNetwork(sim, store, user, deviceMac);
+                                    if (!info || !info.deviceMac || !info.deviceMac.trim() || info.deviceMac === "00:00:00:00:00:00") {
+                                          throw new Error("No valid device MAC was found. Enter this PC's registered device MAC first.");
                                     }
                                     console.log("Attendance network info:", {
-                                          routerMac: info.routerMac,
                                           deviceMac: info.deviceMac,
                                           storeId: store && store.id,
                                           userId: user && user.id
                                     });
-                                    if (phase === "idle") { await api.attendance.checkIn({ routerMac: info.routerMac, deviceMac: info.deviceMac }); toast("Checked in", "ok"); }
-                                    else { await api.attendance.checkOut({ routerMac: info.routerMac, deviceMac: info.deviceMac }); toast("Checked out", "ok"); }
+                                    if (phase === "idle") { await api.attendance.checkIn({ deviceMac: info.deviceMac }); toast("Checked in", "ok"); }
+                                    else { await api.attendance.checkOut({ deviceMac: info.deviceMac }); toast("Checked out", "ok"); }
                                     att.refetch();
-                              } catch (e) { setErr(e.message === "NO_AGENT" ? "This browser can't read the network details needed to check in." : msgOf(e)); }
+                              } catch (e) { setErr(e.message === "NO_AGENT" ? "This browser can't read the device details needed to attend." : msgOf(e)); att.refetch(); }
                               finally { setBusy(false); }
                         }
                         return html`<section>
-    <${PageHeader} title="Check in" sub=${store ? store.name : ""}/>
+    <${PageHeader} title="Attend" sub=${store ? store.name : ""}/>
     <div className="punch-layout">
       <div className="punch-main">
         <div className="clock">${pad(now.getHours())}:${pad(now.getMinutes())}<span className="secs">${pad(now.getSeconds())}</span></div>
         <p className="muted">${now.toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "long" })}</p>
-        <button type="button" className="punch" disabled=${busy || phase === "done" || !canRead} onClick=${punch}>${busy ? "Checking…" : phase === "idle" ? "Check in" : phase === "in" ? "Check out" : "Done for today"}</button>
+                        <button type="button" className="punch" disabled=${blocked} onClick=${punch}>${label}</button>
+        ${att.error && html`<${ErrorBox} error=${att.error} retry=${att.refetch}/>`}
         ${err && html`<p className="alert bad" role="alert">${err}</p>`}
-        ${!canRead && html`<div className="alert warn"><b>Check-in needs the store network info.</b> Install a PC agent, or enter the store router MAC below before checking in.</div>`}
-        ${!agent && !CONFIG.USE_MOCK && html`<div className="panel"><h3>Store network</h3><${Field} label="Router MAC" hint="Format: AA:BB:CC:DD:EE:FF"><input value=${routerMac} onChange=${function (e) { var value = e.target.value; setRouterMac(value); saveStoredRouterMac(value); }} placeholder="AA:BB:CC:DD:EE:FF" /></${Field}></div>`}
+        ${!canRead && html`<div className="alert warn"><b>Attendance needs this PC's device info.</b> Install a PC agent, or enter this PC's registered device MAC below before attending.</div>`}
+        ${!agent && !CONFIG.USE_MOCK && html`<div className="panel"><h3>Store device</h3><${Field} label="Device MAC" hint="This PC's MAC, as registered by your Admin"><input value=${deviceMac} onChange=${function (e) { var value = e.target.value; setDeviceMac(value); saveStoredDeviceMac(value); }} placeholder="AA:BB:CC:DD:EE:FF" /></${Field}></div>`}
       </div>
       <div className="stack">
         <div className="panel"><h3>Today's shift</h3>
@@ -1932,13 +1968,13 @@
             <dt>Checked in</dt><dd>${clockOf(rec.checkInTime)} ${rec.isLate ? html`<span className="badge late">Late</span>` : html`<span className="badge ontime">On time</span>`}</dd>
             <dt>Checked out</dt><dd>${clockOf(rec.checkOutTime)}</dd>
             <dt>Time on shift</dt><dd>${dur(rec.checkInTime, rec.checkOutTime || now.toISOString())}</dd></dl>`}
+          ${phase === "done" && html`<p className="muted" style=${{ marginTop: "8px" }}>You're done for today. This resets at ${pad(CONFIG.DAY_ROLLOVER_HOUR)}:00 and you can check in again.</p>`}
         </div>
         ${CONFIG.USE_MOCK && !agent && html`<div className="panel"><h3>Simulated store PC</h3>
-          <${Field} label="Network this PC is on" hint="Demo only. A real check-in reads this from the PC agent.">
+          <${Field} label="Network this PC is on" hint="Demo only. A real attendance punch reads this from the PC agent.">
             <select value=${sim} onChange=${function (e) { setSim(e.target.value); }}>
-              <option value="ok">Store router, registered PC</option>
-              <option value="router">Unknown router</option>
-              <option value="device">Store router, someone else's PC</option>
+              <option value="ok">Registered PC</option>
+              <option value="device">Unregistered PC</option>
             </select></${Field}></div>`}
       </div>
     </div></section>`;
@@ -1976,7 +2012,7 @@
                         var q = useQuery(function () { return api.attendance.mine({ from: f.from, to: f.to, page: page, pageSize: 12 }); }, [f.from, f.to, page]);
                         var d = q.data || { items: [], totalCount: 0, pageSize: 12 };
                         var cols = [
-                              { h: "Date", render: function (r) { return fmtDay(r.checkInTime); } },
+                              { h: "Date", render: function (r) { return fmtAttendanceDay(r.checkInTime); } },
                               { h: "In", render: function (r) { return clockOf(r.checkInTime); } },
                               { h: "Out", render: function (r) { return clockOf(r.checkOutTime); } },
                               { h: "Worked", render: function (r) { return dur(r.checkInTime, r.checkOutTime); } },
@@ -2058,8 +2094,8 @@
                         return stores;
                   }
 
-                  async function bulkDecide(verb, ids) {
-                        var res = await Promise.allSettled(ids.map(function (id) { return api.schedules[verb](id); }));
+                  async function bulkDecide(verb, ids, reason) {
+                        var res = await Promise.allSettled(ids.map(function (id) { return api.schedules[verb](id, reason); }));
                         var ok = res.filter(function (r) { return r.status === "fulfilled"; }).length;
                         var first = res.find(function (r) { return r.status === "rejected"; });
                         return { ok: ok, total: ids.length, error: first ? msgOf(first.reason) : null };
@@ -2091,7 +2127,7 @@
                         }
                         var footer = html`
     ${!isNew && p.canDelete && html`<button type="button" className="btn danger" onClick=${function () { setConfirmDel(true); }} disabled=${busy} style=${{ marginRight: "auto" }}>Delete</button>`}
-    ${!isNew && p.canReview && sched.status === "Pending" && html`<button type="button" className="btn danger" disabled=${busy} onClick=${function () { run(function () { return api.schedules.reject(sched.id); }, "Rejected"); }}>Reject</button><button type="button" className="btn" disabled=${busy} onClick=${function () { run(function () { return api.schedules.approve(sched.id); }, "Approved"); }}>Approve</button>`}
+    ${!isNew && p.canReview && sched.status === "Pending" && html`<button type="button" className="btn danger" disabled=${busy} onClick=${function () { var reason = window.prompt("Reason for rejecting this shift:", ""); if (reason == null) return; if (!reason.trim()) return; run(function () { return api.schedules.reject(sched.id, reason); }, "Rejected"); }}>Reject</button><button type="button" className="btn" disabled=${busy} onClick=${function () { run(function () { return api.schedules.approve(sched.id); }, "Approved"); }}>Approve</button>`}
     ${p.canEdit && html`<button type="button" className="btn primary" onClick=${save} disabled=${busy}>${isNew ? "Add shift" : "Save changes"}</button>`}`;
                         return html`<${Modal} title=${(isNew ? "Add shift for " : "Shift for ") + dir.userName(p.staffId)} onClose=${p.onClose} footer=${footer}>
     <div className="row"><strong>${fmtDate(p.date)}</strong>${!isNew && html`<${StatusBadge} status=${sched.status}/>`}</div>
@@ -2112,6 +2148,12 @@
                         var stores = useStoreScope();
                         var toast = useToast();
                         var ss = useState(stores[0] && stores[0].id), storeId = ss[0], setStoreId = ss[1];
+                        useEffect(function () {
+                              if (!stores.length) { setStoreId(null); return; }
+                              if (!storeId || !stores.some(function (s) { return s.id === storeId; })) {
+                                    setStoreId(stores[0].id);
+                              }
+                        }, [stores, storeId]);
                         var ws = useState(startOfWeek(new Date())), start = ws[0], setStart = ws[1];
                         var ms = useState(null), modal = ms[0], setModal = ms[1];
                         var bk = useState(null), bulkVerb = bk[0], setBulk = bk[1];
@@ -2127,8 +2169,10 @@
                         if (!stores.length) return html`<section><${PageHeader} title="Schedules"/><${Empty} title="No stores yet" text="Stores appear here once they exist."/></section>`;
                         return html`<section>
     <${PageHeader} title=${canEdit ? "Team schedule" : "Schedules"} sub=${pending ? pending + " shift" + (pending > 1 ? "s" : "") + " this week waiting for approval" : "Everything this week is reviewed"}>
-      ${stores.length > 1 && html`<select aria-label="Store" style=${{ width: "auto" }} value=${storeId} onChange=${function (e) { setStoreId(e.target.value); }}>${stores.map(function (s) { return html`<option key=${s.id} value=${s.id}>${s.name}</option>`; })}</select>`}
-      <${WeekNav} start=${start} onChange=${setStart}/>
+      <div className="row" style=${{ gap: "12px", alignItems: "center" }}>
+        <select className="btn sm select-btn" aria-label="Store" value=${storeId || ""} onChange=${function (e) { setStoreId(e.target.value || null); }}>${stores.map(function (s) { return html`<option key=${s.id} value=${s.id}>${s.name}</option>`; })}</select>
+        <${WeekNav} start=${start} onChange=${setStart}/>
+      </div>
       ${canReview && pending > 0 && html`<button type="button" className="btn danger" onClick=${function () { setBulk("reject"); }}>Reject week</button><button type="button" className="btn primary" onClick=${function () { setBulk("approve"); }}>Approve week (${pending})</button>`}<//>
     ${q.error && html`<${ErrorBox} error=${q.error} retry=${q.refetch}/>`}
     ${!stq.loading && !stq.data && html`<p className="alert warn" style=${{ marginBottom: "14px" }}>This store has no attendance hours yet, so shifts start from default times.</p>`}
@@ -2233,7 +2277,7 @@
                               if (mins(v.morningEnd) <= mins(v.morningStart) || mins(v.nightEnd) <= mins(v.nightStart)) { setErr("Each shift must end after it starts."); return; }
                               var g = parseInt(v.lateGraceMinutes, 10); if (isNaN(g) || g < 0) { setErr("Grace period must be 0 or more minutes."); return; }
                               setBusy(true); setErr("");
-                              try { await api.settings.save(p.storeId, { morningStart: v.morningStart + ":00", morningEnd: v.morningEnd + ":00", nightStart: v.nightStart + ":00", nightEnd: v.nightEnd + ":00", lateGraceMinutes: g }); toast("Attendance hours saved", "ok"); if (p.onSaved) p.onSaved(); }
+                              try { await api.settings.save(p.storeId, { storeId: p.storeId, morningStart: v.morningStart + ":00", morningEnd: v.morningEnd + ":00", nightStart: v.nightStart + ":00", nightEnd: v.nightEnd + ":00", lateGraceMinutes: g }); toast("Attendance hours saved", "ok"); if (p.onSaved) p.onSaved(); }
                               catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
                         }
                         return html`<div className="stack">
@@ -2254,21 +2298,23 @@
                   function StoreModal(p) {
                         var me = useAuth().user, dir = useDir(), toast = useToast();
                         var s = p.store, isNew = !s;
-                        var fm = useBind({ name: s ? s.name : "", areaManagerId: s ? (s.areaManagerId || "") : (me.role === "AreaManager" ? me.id : ""), mac: "" }), v = fm[0], setV = fm[1], bind = fm[2];
-                        var ms = useState(s ? s.routerMacs.slice() : []), macs = ms[0], setMacs = ms[1];
+                        var isAdmin = me.role === "Admin";
+                        var fm = useBind({ name: s ? s.name : "", areaManagerId: s ? (s.areaManagerId || "") : (me.role === "AreaManager" ? me.id : ""), deviceMac: "" }), v = fm[0], setV = fm[1], bind = fm[2];
+                        var dm = useState(s ? (s.deviceMacs || []).slice() : []), deviceMacs = dm[0], setDeviceMacs = dm[1];
                         var bs = useState(false), busy = bs[0], setBusy = bs[1];
                         var es = useState(""), err = es[0], setErr = es[1];
                         var ams = dir.users.filter(function (u) { return u.role === "AreaManager"; });
-                        function addMac() {
-                              var m = normMac(v.mac);
-                              if (!MAC_RE.test(m)) { setErr("Enter a MAC address like A4:5E:60:11:22:33."); return; }
-                              if (macs.indexOf(m) >= 0) { setErr("That router is already on the list."); return; }
-                              setErr(""); setMacs(macs.concat([m])); setV(Object.assign({}, v, { mac: "" }));
+                        function addDeviceMac() {
+                              var m = normMac(v.deviceMac);
+                              if (!MAC_RE.test(m)) { setErr("Enter a MAC address like 00:1B:44:11:3A:B7."); return; }
+                              if (deviceMacs.indexOf(m) >= 0) { setErr("That device is already on the list."); return; }
+                              setErr(""); setDeviceMacs(deviceMacs.concat([m])); setV(Object.assign({}, v, { deviceMac: "" }));
                         }
                         async function save() {
                               if (!v.name.trim()) { setErr("Give the store a name."); return; }
+                              if (!deviceMacs.length) { setErr("Register at least one device for this store."); return; }
                               setBusy(true); setErr("");
-                              var b = { name: v.name.trim(), routerMacs: macs, areaManagerId: v.areaManagerId || null };
+                              var b = { name: v.name.trim(), deviceMacs: deviceMacs, areaManagerId: v.areaManagerId || null };
                               try { if (isNew) await api.stores.create(b); else await api.stores.update(s.id, b); toast(isNew ? "Store added" : "Store updated", "ok"); p.onDone(); }
                               catch (e) { setErr(msgOf(e)); } finally { setBusy(false); }
                         }
@@ -2277,9 +2323,10 @@
       <${Field} label="Store name"><input ...${bind("name")}/></${Field}>
       ${me.role === "Admin" && html`<${Field} label="Area manager"><select ...${bind("areaManagerId")}><option value="">Not assigned</option>${ams.map(function (a) { return html`<option key=${a.id} value=${a.id}>${a.displayName}</option>`; })}</select></${Field}>`}
     </div>
-    <${Field} label="Registered routers" hint="Staff can only check in on a network whose router is on this list.">
-      <span className="row" style=${{ flexWrap: "nowrap" }}><input placeholder="A4:5E:60:11:22:33" value=${v.mac} onChange=${bind("mac").onChange} onKeyDown=${function (e) { if (e.key === "Enter") addMac(); }}/><button type="button" className="btn" onClick=${addMac}>Add</button></span></${Field}>
-    <div className="chips">${macs.length ? macs.map(function (m) { return html`<span key=${m} className="chip">${m}<button type="button" aria-label=${"Remove " + m} onClick=${function () { setMacs(macs.filter(function (x) { return x !== m; })); }}>×</button></span>`; }) : html`<span className="muted">No routers yet.</span>`}</div>
+    <${Field} label="Registered devices" hint=${isAdmin ? "Static, admin-managed PCs. Staff can only check in from a device on this list — devices aren't tied to a person." : "Only an admin can change a store's registered devices."}>
+      ${isAdmin ? html`<span className="row" style=${{ flexWrap: "nowrap" }}><input placeholder="00:1B:44:11:3A:B7" value=${v.deviceMac} onChange=${bind("deviceMac").onChange} onKeyDown=${function (e) { if (e.key === "Enter") addDeviceMac(); }}/><button type="button" className="btn" onClick=${addDeviceMac}>Add</button></span>` : null}
+    </${Field}>
+    <div className="chips">${deviceMacs.length ? deviceMacs.map(function (m) { return html`<span key=${m} className="chip">${m}${isAdmin && html`<button type="button" aria-label=${"Remove " + m} onClick=${function () { setDeviceMacs(deviceMacs.filter(function (x) { return x !== m; })); }}>×</button>`}</span>`; }) : html`<span className="muted">No devices yet.</span>`}</div>
     ${err && html`<p className="alert bad" role="alert">${err}</p>`}
   <//>`;
                   }
@@ -2295,14 +2342,14 @@
                               { h: "Store", render: function (s) { return html`<strong>${s.name}</strong>`; } },
                               { h: "Area manager", render: function (s) { return s.areaManagerId ? dir.userName(s.areaManagerId) : "Not assigned"; } },
                               { h: "Staff", render: function (s) { return dir.users.filter(function (u) { return u.storeId === s.id; }).length; } },
-                              { h: "Registered routers", render: function (s) { return s.routerMacs.length ? html`<span className="chips">${s.routerMacs.map(function (m) { return html`<span key=${m} className="chip">${m}</span>`; })}</span>` : html`<span className="muted">None</span>`; } },
+                              { h: "Registered devices", render: function (s) { var macs = Array.isArray(s.deviceMacs) ? s.deviceMacs : []; return macs.length ? html`<span className="chips">${macs.map(function (m) { return html`<span key=${m} className="chip">${m}</span>`; })}</span>` : html`<span className="muted">None</span>`; } },
                               { h: "", cls: "r", render: function (s) { return html`<span className="row" style=${{ justifyContent: "flex-end" }}><button type="button" className="btn sm" onClick=${function () { setHours(s); }}>Hours</button><button type="button" className="btn sm" onClick=${function () { setEdit(s); }}>Edit</button><button type="button" className="btn sm danger" onClick=${function () { setDel(s); }}>Delete</button></span>`; } }
                         ];
                         async function remove() {
                               setBusy(true);
                               try { await api.stores.remove(del.id); toast("Store deleted", "ok"); setDel(null); dir.reload(); } catch (e) { toast(msgOf(e), "error"); } finally { setBusy(false); }
                         }
-                        return html`<section><${PageHeader} title="Stores" sub="Registered routers decide where staff can check in."><button type="button" className="btn primary" onClick=${function () { setEdit({}); }}>Add store</button><//>
+                        return html`<section><${PageHeader} title="Stores" sub="Registered devices decide where staff can check in."><button type="button" className="btn primary" onClick=${function () { setEdit({}); }}>Add store</button><//>
     <${DataTable} cols=${cols} rows=${stores} emptyTitle="No stores yet" empty="Add the first store to get started."/>
     ${edit && html`<${StoreModal} store=${edit.id ? edit : null} onClose=${function () { setEdit(null); }} onDone=${function () { setEdit(null); dir.reload(); }}/>`}
     ${hours && html`<${Modal} title=${hours.name + ": attendance hours"} onClose=${function () { setHours(null); }}><${SettingsForm} storeId=${hours.id} onSaved=${function () { setHours(null); }}/><//>`}
@@ -2365,16 +2412,20 @@
                         };
                         var cnt = function (k) { return qs[k].data ? qs[k].data.totalCount : 0; };
                         async function decide(kind, id, verb) {
+                              var reason = null;
+                              if (verb === "reject") { reason = window.prompt("Reason for rejecting this " + kind.slice(0, -1) + ":", ""); if (reason == null) return; if (!reason.trim()) { toast("A rejection reason is required.", "error"); return; } }
                               setBusyId(id);
-                              try { await api[kind][verb](id); toast(verb === "approve" ? "Approved" : "Rejected", "ok"); qs[kind].refetch(); }
+                              try { await api[kind][verb](id, reason); toast(verb === "approve" ? "Approved" : "Rejected", "ok"); qs[kind].refetch(); }
                               catch (e) { toast(msgOf(e), "error"); } finally { setBusyId(null); }
                         }
                         function ask(verb, ids, storeName, scope) {
                               setConfirm({ verb: verb, ids: ids, title: (verb === "approve" ? "Approve " : "Reject ") + ids.length + " shift" + (ids.length === 1 ? "" : "s") + "?", body: (verb === "approve" ? "Approve " : "Reject ") + scope + " for " + storeName + "?" });
                         }
                         async function runBulk() {
+                              var reason = null;
+                              if (confirm.verb === "reject") { reason = window.prompt("Reason for rejecting these shifts:", ""); if (reason == null) { setConfirm(null); return; } if (!reason.trim()) { toast("A rejection reason is required.", "error"); setConfirm(null); return; } }
                               setBusyId("bulk");
-                              var r = await bulkDecide(confirm.verb, confirm.ids);
+                              var r = await bulkDecide(confirm.verb, confirm.ids, reason);
                               bulkToast(toast, confirm.verb, r); setConfirm(null); setBusyId(null); qs.schedules.refetch();
                         }
                         var list = items(qs[tab]);
@@ -2462,12 +2513,12 @@
                      SHELL + LOGIN
                      ===================================================================== */
                   var NAV = {
-                        Staff: [["/checkin", "Check in", CheckInPage], ["/schedule", "My schedule", MySchedulePage], ["/attendance", "My attendance", MyAttendancePage], ["/requests", "Requests", RequestsPage]],
-                        StoreManager: [["/checkin", "Check in", CheckInPage], ["/schedule", "My schedule", MySchedulePage], ["/attendance", "My attendance", MyAttendancePage], ["/requests", "Requests", RequestsPage], "-", ["/team", "Team schedule", TeamSchedulePage], ["/roster", "Roster", PeoplePage], ["/team-attendance", "Team attendance", TeamAttendancePage], ["/settings", "Store hours", SettingsPage]],
+                        Staff: [["/checkin", "Attend", CheckInPage], ["/schedule", "My schedule", MySchedulePage], ["/attendance", "My attendance", MyAttendancePage], ["/requests", "Requests", RequestsPage]],
+                        StoreManager: [["/checkin", "Attend", CheckInPage], ["/schedule", "My schedule", MySchedulePage], ["/attendance", "My attendance", MyAttendancePage], ["/requests", "Requests", RequestsPage], "-", ["/team", "Team schedule", TeamSchedulePage], ["/roster", "Roster", PeoplePage], ["/team-attendance", "Team attendance", TeamAttendancePage], ["/settings", "Store hours", SettingsPage]],
                         AreaManager: [["/approvals", "Approvals", ApprovalsPage], ["/team", "Schedules", TeamSchedulePage], ["/team-attendance", "Attendance", TeamAttendancePage], ["/people", "People", PeoplePage], ["/stores", "Stores", StoresPage]],
                         Admin: [["/approvals", "Approvals", ApprovalsPage], ["/people", "Users", PeoplePage], ["/stores", "Stores", StoresPage], ["/team", "Schedules", TeamSchedulePage], ["/team-attendance", "Attendance", TeamAttendancePage]]
                   };
-                  var DEMO = [{ u: "admin", label: "Admin", sub: "Users and stores" }, { u: "mira.am", label: "Area manager", sub: "Approvals" }, { u: "sm.downtown", label: "Store manager", sub: "Schedules and roster" }, { u: "layla", label: "Staff", sub: "Check in and requests" }];
+                  var DEMO = [{ u: "admin", label: "Admin", sub: "Users and stores" }, { u: "mira.am", label: "Area manager", sub: "Approvals" }, { u: "sm.downtown", label: "Store manager", sub: "Schedules and roster" }, { u: "layla", label: "Staff", sub: "Attend and requests" }];
 
                   function Shell() {
                         var auth = useAuth(), user = auth.user, dir = useDir(), r = useRouter();
@@ -2519,7 +2570,7 @@
           <${Ticket} s=${{ shiftType: "ANN", startTime: "00:00:00", endTime: "00:00:00", status: "Approved" }}/>
         </div>
       </div>
-      <p style=${{ color: "var(--side-mute)" }}>Schedules, check-ins, requests and approvals for every store.</p>
+      <p style=${{ color: "var(--side-mute)" }}>Schedules, attendance, requests and approvals for every store.</p>
     </div>
     <div className="login-form">
       <h2 style=${{ fontSize: "1.6rem" }}>Sign in</h2>

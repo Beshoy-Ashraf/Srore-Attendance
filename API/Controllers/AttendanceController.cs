@@ -6,6 +6,7 @@ using Application.Attendance.Commands.ManualAttendance;
 using Application.Attendance.Dtos;
 using Application.Attendance.Queries.GetAttendanceById;
 using Application.Attendance.Queries.GetAttendances;
+using Application.Common.Models;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +27,7 @@ public class AttendanceController(ISender mediator) : ControllerBase
       [HttpPost("check-in")]
       public async Task<ActionResult<CheckInResponseDto>> CheckIn(CheckInRequest request, CancellationToken cancellationToken)
       {
-            var command = new CheckInCommand(CurrentUserId, request.RouterMac, request.DeviceMac);
+            var command = new CheckInCommand(CurrentUserId,  request.DeviceMac);
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(result);
       }
@@ -34,17 +35,18 @@ public class AttendanceController(ISender mediator) : ControllerBase
       [HttpPost("check-out")]
       public async Task<ActionResult<CheckOutResponseDto>> CheckOut(CheckOutRequest request, CancellationToken cancellationToken)
       {
-            var command = new CheckOutCommand(CurrentUserId, request.RouterMac, request.DeviceMac);
+            var command = new CheckOutCommand(CurrentUserId,  request.DeviceMac);
             var result = await _mediator.Send(command, cancellationToken);
             return Ok(result);
       }
 
+      /// <summary>Store Manager/Area Manager/Admin enters attendance manually for a staff member in their own store(s).</summary>
       [HttpPost("manual")]
       [Authorize(Roles = "StoreManager,AreaManager,Admin")]
       public async Task<ActionResult<Guid>> ManualEntry(ManualAttendanceRequest request, CancellationToken cancellationToken)
       {
             var command = new ManualAttendanceCommand(
-                request.StaffId, CurrentUserId, request.Date, request.CheckInTime, request.CheckOutTime, request.Notes);
+                request.StaffId, request.Date, request.CheckInTime, request.CheckOutTime, request.Notes);
 
             var id = await _mediator.Send(command, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { id }, id);
@@ -57,31 +59,34 @@ public class AttendanceController(ISender mediator) : ControllerBase
             return Ok(attendance);
       }
 
+      /// <summary>Attendance report. Requirement: Area Managers and Store Managers can see this, scoped to their stores.</summary>
       [HttpGet]
       [Authorize(Roles = "StoreManager,AreaManager,Admin")]
-      public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetAll(
+      public async Task<ActionResult<PagedResult<AttendanceDto>>> GetAll(
           [FromQuery] Guid? staffId,
           [FromQuery] Guid? storeId,
           [FromQuery] DateTime? from,
           [FromQuery] DateTime? to,
+          [FromQuery] bool? lateOnly,
           [FromQuery] int page = 1,
           [FromQuery] int pageSize = 20,
           CancellationToken cancellationToken = default)
       {
-            var query = new GetAttendancesQuery(staffId, storeId, from, to, page, pageSize);
+            var query = new GetAttendancesQuery(staffId, storeId, from, to, lateOnly, page, pageSize);
             var attendances = await _mediator.Send(query, cancellationToken);
             return Ok(attendances);
       }
 
+      /// <summary>The current user's own attendance history.</summary>
       [HttpGet("me")]
-      public async Task<ActionResult<IEnumerable<AttendanceDto>>> GetMine(
+      public async Task<ActionResult<PagedResult<AttendanceDto>>> GetMine(
           [FromQuery] DateTime? from,
           [FromQuery] DateTime? to,
           [FromQuery] int page = 1,
           [FromQuery] int pageSize = 20,
           CancellationToken cancellationToken = default)
       {
-            var query = new GetAttendancesQuery(CurrentUserId, null, from, to, page, pageSize);
+            var query = new GetAttendancesQuery(CurrentUserId, null, from, to, null, page, pageSize);
             var attendances = await _mediator.Send(query, cancellationToken);
             return Ok(attendances);
       }

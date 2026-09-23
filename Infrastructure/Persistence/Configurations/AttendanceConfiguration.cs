@@ -12,7 +12,6 @@ public class AttendanceConfiguration : IEntityTypeConfiguration<Attendance>
         builder.HasKey(a => a.Id);
 
         builder.Property(a => a.VerificationMethod).HasConversion<string>().HasMaxLength(10);
-        builder.Property(a => a.CheckInRouterMac).HasMaxLength(17);
         builder.Property(a => a.CheckInDeviceMac).HasMaxLength(17);
         builder.Property(a => a.CheckInIp).HasMaxLength(45); // IPv6-safe length
 
@@ -25,6 +24,11 @@ public class AttendanceConfiguration : IEntityTypeConfiguration<Attendance>
             .WithMany()
             .HasForeignKey(a => a.EnteredManuallyBy)
             .OnDelete(DeleteBehavior.Restrict);
+
+        builder.Property(a => a.Notes).HasMaxLength(500);
+
+        // Soft delete: a deleted attendance record disappears from every query but stays for audit.
+        builder.HasQueryFilter(a => a.DeletedDate == null);
 
         builder.HasIndex(a => new { a.StaffId, a.CheckInTime });
     }
